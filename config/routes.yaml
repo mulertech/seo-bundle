@@ -1,0 +1,9 @@
+mulertech_seo_sitemap:
+    path: /sitemap.xml
+    controller: MulerTech\SeoBundle\Controller\SitemapController
+    methods: [GET]
+
+mulertech_seo_robots:
+    path: /robots.txt
+    controller: MulerTech\SeoBundle\Controller\RobotsController
+    methods: [GET]
