@@ -177,7 +177,15 @@ class BlogSitemapProvider implements SitemapUrlProviderInterface
 
 Providers implementing `SitemapUrlProviderInterface` are auto-tagged and collected by the sitemap service.
 
-The bundle registers routes for `/sitemap.xml` and `/robots.txt` automatically.
+### Routes
+
+The bundle provides routes for `/sitemap.xml` and `/robots.txt`. Import them in your application:
+
+```yaml
+# config/routes/mulertech_seo.yaml
+mulertech_seo:
+    resource: "@MulerTechSeoBundle/config/routes.yaml"
+```
 
 ### 5. SEO fields trait (optional)
 
