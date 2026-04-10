@@ -1,5 +1,9 @@
 # Release notes for seo-bundle
 
+## v1.0.1 - 2026-04-10
+
+Remove export-ignore for templates in .gitattributes
+
 ## v1.0.0 - 2026-04-10
 
 Features
