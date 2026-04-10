@@ -141,6 +141,10 @@ final class MulerTechSeoBundle extends AbstractBundle
             ->tag('controller.service_arguments');
 
         $container->services()
+            ->alias(SitemapController::class, 'mulertech_seo.controller.sitemap')
+            ->public();
+
+        $container->services()
             ->set('mulertech_seo.controller.robots', RobotsController::class)
             ->args([
                 '$urlGenerator' => new Reference('router'),
@@ -148,6 +152,10 @@ final class MulerTechSeoBundle extends AbstractBundle
                 '$disallowPaths' => $robots['disallow_paths'],
             ])
             ->tag('controller.service_arguments');
+
+        $container->services()
+            ->alias(RobotsController::class, 'mulertech_seo.controller.robots')
+            ->public();
 
         if (class_exists(AbstractExtension::class)) {
             $container->services()
