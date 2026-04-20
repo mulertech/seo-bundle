@@ -82,7 +82,8 @@ final class SchemaOrgServiceTest extends TestCase
         self::assertSame('TestCompany', $result['name']);
         self::assertArrayHasKey('potentialAction', $result);
         self::assertSame('SearchAction', $result['potentialAction']['@type']);
-        self::assertSame('https://example.com/blog?q={search_term_string}', $result['potentialAction']['target']);
+        self::assertSame('EntryPoint', $result['potentialAction']['target']['@type']);
+        self::assertSame('https://example.com/blog?q={search_term_string}', $result['potentialAction']['target']['urlTemplate']);
     }
 
     public function testWebSiteWithoutSearchAction(): void

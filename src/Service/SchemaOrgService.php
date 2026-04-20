@@ -97,7 +97,10 @@ final readonly class SchemaOrgService
         if ('' !== $this->searchActionPathTemplate) {
             $schema['potentialAction'] = [
                 '@type' => 'SearchAction',
-                'target' => $siteUrl.$this->searchActionPathTemplate,
+                'target' => [
+                    '@type' => 'EntryPoint',
+                    'urlTemplate' => $siteUrl.$this->searchActionPathTemplate,
+                ],
                 'query-input' => 'required name=search_term_string',
             ];
         }
