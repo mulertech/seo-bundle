@@ -1,5 +1,9 @@
 # Release notes for seo-bundle
 
+## v1.0.3 - 2026-04-20
+
+SearchAction `target` is now an `EntryPoint` object with `urlTemplate`, per schema.org spec — prevents search engines from crawling the literal `{search_term_string}` placeholder URL.
+
 ## v1.0.2 - 2026-04-10
 
 Register Sitemap and Robots controllers as public services in MulerTechSeoBundle
