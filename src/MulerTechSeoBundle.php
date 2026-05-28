@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace MulerTech\SeoBundle;
 
+use MulerTech\SeoBundle\Controller\LlmsController;
 use MulerTech\SeoBundle\Controller\RobotsController;
 use MulerTech\SeoBundle\Controller\SitemapController;
+use MulerTech\SeoBundle\Model\LlmsSectionProviderInterface;
 use MulerTech\SeoBundle\Model\SitemapUrlProviderInterface;
+use MulerTech\SeoBundle\Service\LlmsService;
 use MulerTech\SeoBundle\Service\MetaTagService;
 use MulerTech\SeoBundle\Service\SchemaOrgService;
 use MulerTech\SeoBundle\Service\SitemapService;
@@ -78,6 +81,48 @@ final class MulerTechSeoBundle extends AbstractBundle
                         ->end()
                     ->end()
                 ->end()
+                ->arrayNode('llms')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->booleanNode('enabled')
+                            ->defaultTrue()
+                            ->info('Serve the /llms.txt route')
+                        ->end()
+                        ->scalarNode('title')
+                            ->defaultNull()
+                            ->info('H1 heading; defaults to the company name')
+                        ->end()
+                        ->scalarNode('summary')
+                            ->defaultValue('')
+                            ->info('Blockquote summary describing the site')
+                        ->end()
+                        ->scalarNode('notes')
+                            ->defaultValue('')
+                            ->info('Optional intro prose below the summary')
+                        ->end()
+                        ->arrayNode('sections')
+                            ->info('Curated link sections keyed by H2 heading')
+                            ->useAttributeAsKey('name')
+                            ->arrayPrototype()
+                                ->children()
+                                    ->integerNode('priority')
+                                        ->defaultValue(0)
+                                        ->info('Higher renders first; providers can interleave via LlmsSection priority')
+                                    ->end()
+                                    ->arrayNode('links')
+                                        ->arrayPrototype()
+                                            ->children()
+                                                ->scalarNode('url')->isRequired()->end()
+                                                ->scalarNode('title')->isRequired()->end()
+                                                ->scalarNode('description')->defaultValue('')->end()
+                                            ->end()
+                                        ->end()
+                                    ->end()
+                                ->end()
+                            ->end()
+                        ->end()
+                    ->end()
+                ->end()
             ->end();
     }
 
@@ -89,11 +134,17 @@ final class MulerTechSeoBundle extends AbstractBundle
         $builder->registerForAutoconfiguration(SitemapUrlProviderInterface::class)
             ->addTag('mulertech_seo.sitemap_url_provider');
 
+        $builder->registerForAutoconfiguration(LlmsSectionProviderInterface::class)
+            ->addTag('mulertech_seo.llms_section_provider');
+
         /** @var array<string, mixed> $schemaOrg */
         $schemaOrg = $config['schema_org'];
 
         /** @var array<string, mixed> $robots */
         $robots = $config['robots'];
+
+        /** @var array<string, mixed> $llms */
+        $llms = $config['llms'];
 
         $container->services()
             ->set('mulertech_seo.meta_tag', MetaTagService::class)
@@ -155,6 +206,32 @@ final class MulerTechSeoBundle extends AbstractBundle
 
         $container->services()
             ->alias(RobotsController::class, 'mulertech_seo.controller.robots')
+            ->public();
+
+        $container->services()
+            ->set('mulertech_seo.llms', LlmsService::class)
+            ->args([
+                '$companyInfoProvider' => new Reference(Model\SeoCompanyInfoProviderInterface::class),
+                '$title' => $llms['title'],
+                '$summary' => $llms['summary'],
+                '$notes' => $llms['notes'],
+                '$staticSections' => $llms['sections'],
+                '$sectionProviders' => tagged_iterator('mulertech_seo.llms_section_provider'),
+            ]);
+
+        $container->services()
+            ->alias(LlmsService::class, 'mulertech_seo.llms');
+
+        $container->services()
+            ->set('mulertech_seo.controller.llms', LlmsController::class)
+            ->args([
+                '$llmsService' => new Reference('mulertech_seo.llms'),
+                '$enabled' => $llms['enabled'],
+            ])
+            ->tag('controller.service_arguments');
+
+        $container->services()
+            ->alias(LlmsController::class, 'mulertech_seo.controller.llms')
             ->public();
 
         if (class_exists(AbstractExtension::class)) {

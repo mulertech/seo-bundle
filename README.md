@@ -9,7 +9,7 @@ ___
 [![Test Coverage](https://raw.githubusercontent.com/mulertech/seo-bundle/badge/badge-coverage.svg)](https://packagist.org/packages/mulertech/seo-bundle)
 ___
 
-Symfony bundle for SEO management: meta tags (OpenGraph, Twitter Cards), Schema.org JSON-LD structured data, sitemap XML generation, and robots.txt.
+Symfony bundle for SEO management: meta tags (OpenGraph, Twitter Cards), Schema.org JSON-LD structured data, sitemap XML generation, robots.txt, and llms.txt.
 
 ## Requirements
 
@@ -47,6 +47,16 @@ mulertech_seo:
         disallow_paths:
             - '/admin'
             - '/login'
+    llms:
+        enabled: true                             # Serve the /llms.txt route
+        title: 'My Company'                       # H1 (defaults to company name)
+        summary: 'We build amazing web apps.'     # Blockquote summary
+        notes: 'Optional intro prose.'            # Prose below the summary
+        sections:                                 # Curated links, keyed by H2 heading
+            Documentation:
+                - { url: '/docs', title: 'Docs', description: 'Guides and references' }
+            Services:
+                - { url: '/services/web', title: 'Web Development' }
 ```
 
 ## Usage
@@ -177,9 +187,43 @@ class BlogSitemapProvider implements SitemapUrlProviderInterface
 
 Providers implementing `SitemapUrlProviderInterface` are auto-tagged and collected by the sitemap service.
 
+### 5. llms.txt (provider pattern)
+
+The `/llms.txt` route serves a Markdown index for LLMs ([llmstxt.org](https://llmstxt.org/)). Static sections come from the `llms.sections` config; dynamic sections are contributed by implementing `LlmsSectionProviderInterface`:
+
+```php
+use MulerTech\SeoBundle\Model\LlmsLink;
+use MulerTech\SeoBundle\Model\LlmsSection;
+use MulerTech\SeoBundle\Model\LlmsSectionProviderInterface;
+
+class BlogLlmsProvider implements LlmsSectionProviderInterface
+{
+    public function __construct(
+        private readonly BlogPostRepository $repository,
+        private readonly UrlGeneratorInterface $urlGenerator,
+    ) {}
+
+    public function getSections(): iterable
+    {
+        $links = [];
+        foreach ($this->repository->findPublished() as $post) {
+            $links[] = new LlmsLink(
+                url: $this->urlGenerator->generate('app_blog_show', ['slug' => $post->getSlug()], UrlGeneratorInterface::ABSOLUTE_URL),
+                title: $post->getTitle(),
+                description: $post->getExcerpt(),
+            );
+        }
+
+        yield new LlmsSection('Blog', $links);
+    }
+}
+```
+
+Providers implementing `LlmsSectionProviderInterface` are auto-tagged; their sections are appended after the static config sections. Set `llms.enabled: false` to return a 404 for the route.
+
 ### Routes
 
-The bundle provides routes for `/sitemap.xml` and `/robots.txt`. Import them in your application:
+The bundle provides routes for `/sitemap.xml`, `/robots.txt`, and `/llms.txt`. Import them in your application:
 
 ```yaml
 # config/routes/mulertech_seo.yaml
@@ -187,7 +231,7 @@ mulertech_seo:
     resource: "@MulerTechSeoBundle/config/routes.yaml"
 ```
 
-### 5. SEO fields trait (optional)
+### 6. SEO fields trait (optional)
 
 Add `metaDescription` and `metaKeywords` fields to any entity:
 

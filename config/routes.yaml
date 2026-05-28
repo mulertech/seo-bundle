@@ -7,3 +7,8 @@ mulertech_seo_robots:
     path: /robots.txt
     controller: MulerTech\SeoBundle\Controller\RobotsController
     methods: [GET]
+
+mulertech_seo_llms:
+    path: /llms.txt
+    controller: MulerTech\SeoBundle\Controller\LlmsController
+    methods: [GET]

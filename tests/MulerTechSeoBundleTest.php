@@ -6,8 +6,10 @@ namespace MulerTech\SeoBundle\Tests;
 
 use MulerTech\SeoBundle\Controller\RobotsController;
 use MulerTech\SeoBundle\Controller\SitemapController;
+use MulerTech\SeoBundle\Model\LlmsSectionProviderInterface;
 use MulerTech\SeoBundle\Model\SitemapUrlProviderInterface;
 use MulerTech\SeoBundle\MulerTechSeoBundle;
+use MulerTech\SeoBundle\Service\LlmsService;
 use MulerTech\SeoBundle\Service\MetaTagService;
 use MulerTech\SeoBundle\Service\SchemaOrgService;
 use MulerTech\SeoBundle\Service\SitemapService;
@@ -145,6 +147,66 @@ final class MulerTechSeoBundleTest extends TestCase
         self::assertSame(['/admin', '/api', '/private'], $args['$disallowPaths']);
     }
 
+    public function testLoadExtensionRegistersLlmsServicesWithDefaults(): void
+    {
+        $containerBuilder = $this->loadBundleConfig([]);
+
+        self::assertTrue($containerBuilder->has('mulertech_seo.llms'));
+        self::assertTrue($containerBuilder->has('mulertech_seo.controller.llms'));
+        self::assertTrue($containerBuilder->hasAlias(LlmsService::class));
+
+        $serviceDef = $containerBuilder->getDefinition('mulertech_seo.llms');
+        $serviceArgs = $serviceDef->getArguments();
+
+        self::assertNull($serviceArgs['$title']);
+        self::assertSame('', $serviceArgs['$summary']);
+        self::assertSame('', $serviceArgs['$notes']);
+        self::assertSame([], $serviceArgs['$staticSections']);
+
+        $controllerDef = $containerBuilder->getDefinition('mulertech_seo.controller.llms');
+        self::assertTrue($controllerDef->getArgument('$enabled'));
+    }
+
+    public function testLoadExtensionRegistersLlmsServicesWithCustomConfig(): void
+    {
+        $containerBuilder = $this->loadBundleConfig([
+            'llms' => [
+                'enabled' => false,
+                'title' => 'My Site',
+                'summary' => 'A summary',
+                'notes' => 'Some notes',
+                'sections' => [
+                    'Docs' => [
+                        'priority' => 5,
+                        'links' => [
+                            ['url' => '/docs', 'title' => 'Docs', 'description' => 'Guides'],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $serviceDef = $containerBuilder->getDefinition('mulertech_seo.llms');
+        $serviceArgs = $serviceDef->getArguments();
+
+        self::assertSame('My Site', $serviceArgs['$title']);
+        self::assertSame('A summary', $serviceArgs['$summary']);
+        self::assertSame('Some notes', $serviceArgs['$notes']);
+        self::assertArrayHasKey('Docs', $serviceArgs['$staticSections']);
+        self::assertSame(5, $serviceArgs['$staticSections']['Docs']['priority']);
+
+        $controllerDef = $containerBuilder->getDefinition('mulertech_seo.controller.llms');
+        self::assertFalse($controllerDef->getArgument('$enabled'));
+    }
+
+    public function testLoadExtensionRegistersLlmsSectionProviderAutoconfiguration(): void
+    {
+        $containerBuilder = $this->loadBundleConfig([]);
+
+        $autoconfigured = $containerBuilder->getAutoconfiguredInstanceof();
+        self::assertArrayHasKey(LlmsSectionProviderInterface::class, $autoconfigured);
+    }
+
     public function testLoadExtensionRegistersTwigExtension(): void
     {
         $containerBuilder = $this->loadBundleConfig([]);
@@ -191,8 +253,10 @@ final class MulerTechSeoBundleTest extends TestCase
 
         self::assertNotNull($routeCollection->get('mulertech_seo_sitemap'));
         self::assertNotNull($routeCollection->get('mulertech_seo_robots'));
+        self::assertNotNull($routeCollection->get('mulertech_seo_llms'));
         self::assertSame('/sitemap.xml', $routeCollection->get('mulertech_seo_sitemap')->getPath());
         self::assertSame('/robots.txt', $routeCollection->get('mulertech_seo_robots')->getPath());
+        self::assertSame('/llms.txt', $routeCollection->get('mulertech_seo_llms')->getPath());
     }
 
     /**
