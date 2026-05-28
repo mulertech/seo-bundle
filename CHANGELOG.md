@@ -1,5 +1,14 @@
 # Release notes for seo-bundle
 
+## v1.1.0 - 2026-05-28
+
+Add `/llms.txt` support — environment-agnostic, provider pattern like the sitemap.
+
+- Curated link sections configurable under `llms` (title, summary, notes, sections)
+- Dynamic sections via auto-tagged collectors (`LlmsSectionProviderInterface`)
+- Per-section `priority` so curated and provider sections can be interleaved freely
+- Route toggleable through `llms.enabled`
+
 ## v1.0.3 - 2026-04-20
 
 SearchAction `target` is now an `EntryPoint` object with `urlTemplate`, per schema.org spec — prevents search engines from crawling the literal `{search_term_string}` placeholder URL.
