@@ -14,7 +14,7 @@ Symfony bundle for SEO management: meta tags (OpenGraph, Twitter Cards), Schema.
 ## Requirements
 
 - PHP 8.4+
-- Symfony 6.4+ or 7.0+
+- Symfony 6.4+, 7.0+ or 8.0+
 
 ## Installation
 
