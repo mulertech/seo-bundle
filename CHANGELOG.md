@@ -1,5 +1,9 @@
 # Release notes for seo-bundle
 
+## v1.2.0 - 2026-06-04
+
+Add Symfony 8 support — the bundle now allows `^8.0` (tested against Symfony 8.1) alongside the existing `^6.4 || ^7.0` constraints. No breaking changes.
+
 ## v1.1.0 - 2026-05-28
 
 Add `/llms.txt` support — environment-agnostic, provider pattern like the sitemap.
