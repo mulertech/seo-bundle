@@ -40,6 +40,11 @@ final class MulerTechSeoBundle extends AbstractBundle
                     ->defaultValue('fr_FR')
                     ->info('Default og:locale value')
                 ->end()
+                ->arrayNode('canonical_ignored_parameters')
+                    ->scalarPrototype()->end()
+                    ->defaultValue(MetaTagService::TRACKING_PARAMETERS)
+                    ->info('Query parameters stripped from canonical and og:url. Set your own to add site-specific ones; parameters that change the page content must not be listed.')
+                ->end()
                 ->arrayNode('schema_org')
                     ->addDefaultsIfNotSet()
                     ->children()
@@ -153,6 +158,7 @@ final class MulerTechSeoBundle extends AbstractBundle
                 '$companyInfoProvider' => new Reference(Model\SeoCompanyInfoProviderInterface::class),
                 '$defaultImage' => $config['default_image'],
                 '$defaultLocale' => $config['default_locale'],
+                '$ignoredParameters' => array_values((array) $config['canonical_ignored_parameters']),
             ]);
 
         $container->services()

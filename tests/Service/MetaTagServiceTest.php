@@ -101,6 +101,64 @@ final class MetaTagServiceTest extends TestCase
         self::assertStringContainsString('example.com/test', $result['canonical']);
     }
 
+    /**
+     * The canonical is what search engines treat as the page's official address, and what
+     * a reshare carries. Leaving a tracking parameter in it credits a campaign with
+     * visits that came from elsewhere.
+     */
+    public function testTrackingParametersAreStrippedFromTheCanonical(): void
+    {
+        $result = $this->metaTagsFor('https://example.com/article?utm_source=newsletter&fbclid=abc123');
+
+        self::assertSame('https://example.com/article', $result['canonical']);
+        self::assertSame('https://example.com/article', $result['og:url']);
+    }
+
+    /**
+     * Dropping every parameter would be simpler and wrong: a paginated page canonicalised
+     * to its first page is declared a duplicate of it, and drops out of the index.
+     */
+    public function testParametersThatChangeThePageAreKept(): void
+    {
+        $result = $this->metaTagsFor('https://example.com/blog?page=2');
+
+        self::assertSame('https://example.com/blog?page=2', $result['canonical']);
+    }
+
+    public function testTrackingParametersAreRemovedWithoutLosingTheOthers(): void
+    {
+        $result = $this->metaTagsFor('https://example.com/blog?page=2&utm_medium=social&q=symfony');
+
+        self::assertSame('https://example.com/blog?page=2&q=symfony', $result['canonical']);
+    }
+
+    public function testSiteSpecificParametersCanBeDeclared(): void
+    {
+        $result = $this->metaTagsFor('https://example.com/article?s=li', ['s']);
+
+        self::assertSame('https://example.com/article', $result['canonical']);
+    }
+
+    /**
+     * @param list<string> $ignoredParameters
+     *
+     * @return array<string, ?string>
+     */
+    private function metaTagsFor(string $uri, ?array $ignoredParameters = null): array
+    {
+        $requestStack = new RequestStack();
+        $requestStack->push(Request::create($uri));
+
+        $companyInfo = $this->createStub(SeoCompanyInfoProviderInterface::class);
+        $companyInfo->method('getName')->willReturn('TestCompany');
+
+        $service = null === $ignoredParameters
+            ? new MetaTagService($requestStack, $companyInfo)
+            : new MetaTagService($requestStack, $companyInfo, ignoredParameters: $ignoredParameters);
+
+        return $service->generateMetaTags(['title' => 'Page']);
+    }
+
     public function testNoImageReturnsSummaryCard(): void
     {
         $requestStack = new RequestStack();
