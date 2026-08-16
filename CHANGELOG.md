@@ -1,5 +1,16 @@
 # Release notes for seo-bundle
 
+## v1.3.0 - 2026-08-16
+
+Canonical and `og:url` no longer carry tracking parameters.
+They were built from the full request URI, so a page reached through `?utm_source=…` or `?fbclid=…` declared the tracked address as its canonical one.
+Search engines then treat that address as the page's official URL, and anyone resharing from it propagates the parameter, crediting a campaign with visits that came from somewhere else.
+Only parameters naming a *source* are removed. Parameters that change what the page shows are kept: canonicalising `/blog?page=2` to `/blog` would declare page 2 a duplicate of page 1 and drop it from the index.
+
+- Defaults, exposed as `MetaTagService::TRACKING_PARAMETERS`: `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content`, `utm_id`, `gclid`, `gbraid`, `wbraid`, `fbclid`, `msclkid`, `ttclid`, `twclid`, `igshid`, `mc_cid`, `mc_eid`, `yclid`, `_ga`, `ref_src`
+- New `canonical_ignored_parameters` config key for site-specific parameters. Declaring it **replaces** the default list rather than adding to it, so repeat the defaults you still want
+- No breaking change: the constructor argument is optional, the config key defaults to the list above, and an application that declares neither behaves as before on clean URLs
+
 ## v1.2.0 - 2026-06-04
 
 Add Symfony 8 support — the bundle now allows `^8.0` (tested against Symfony 8.1) alongside the existing `^6.4 || ^7.0` constraints. No breaking changes.
