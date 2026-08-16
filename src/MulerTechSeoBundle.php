@@ -43,7 +43,7 @@ final class MulerTechSeoBundle extends AbstractBundle
                 ->arrayNode('canonical_ignored_parameters')
                     ->scalarPrototype()->end()
                     ->defaultValue(MetaTagService::TRACKING_PARAMETERS)
-                    ->info('Query parameters stripped from canonical and og:url. Set your own to add site-specific ones; parameters that change the page content must not be listed.')
+                    ->info('Query parameters stripped from canonical and og:url. Declaring this key REPLACES the default list, so repeat the defaults you still want. Never list a parameter that changes what the page shows: canonicalising /blog?page=2 to /blog declares page 2 a duplicate of page 1.')
                 ->end()
                 ->arrayNode('schema_org')
                     ->addDefaultsIfNotSet()

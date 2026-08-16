@@ -28,6 +28,16 @@ composer require mulertech/seo-bundle
 mulertech_seo:
     default_image: '/images/og-default.webp'  # Default OG/Twitter image
     default_locale: 'fr_FR'                    # Default og:locale
+
+    # Query parameters stripped from canonical and og:url. Omit the key to keep the
+    # defaults (utm_*, gclid, fbclid, msclkid, ttclid, twclid, igshid, mc_cid, mc_eid,
+    # yclid, _ga, ref_src, gbraid, wbraid).
+    #
+    # Declaring it REPLACES that list rather than adding to it, so repeat the defaults
+    # you still want. Never list a parameter that changes what the page shows:
+    # canonicalising /blog?page=2 to /blog declares page 2 a duplicate of page 1, and
+    # search engines drop it from the index.
+    canonical_ignored_parameters: ['utm_source', 'utm_medium', 'utm_campaign', 'fbclid', 's']
     schema_org:
         organization_type: 'LocalBusiness'
         organization_description: 'Your company description'
