@@ -1,5 +1,19 @@
 # Release notes for seo-bundle
 
+## v1.4.0 - 2026-08-20
+
+`og:image` and `twitter:image` are now absolute, and the image can declare its dimensions.
+
+A relative `default_image` was emitted as-is. Facebook resolves a bare path out of leniency, which is what made the omission so easy to miss: the markup looks right and the preview works on the platform most people test with, while LinkedIn, WhatsApp and Slack drop the image entirely.
+A path is now resolved against the host of the current request, so one configured value serves every environment.
+
+- `image` passed as an option is absolutised the same way; a value that already carries a scheme, or a protocol-relative `//host/…`, is left alone
+- New options `imageWidth`, `imageHeight`, `imageAlt`, `imageType`, emitted as `og:image:width`, `og:image:height`, `og:image:alt`, `og:image:type` and `twitter:image:alt`. Declared dimensions let Facebook settle on the large card during the first crawl instead of fetching the image to decide
+- New config keys `default_image_width`, `default_image_height` and `default_image_alt`, so the fallback image declares itself without every call site repeating it. They describe `default_image` alone: a page supplying its own `image` never inherits them, since a declared size contradicting the file is worse than none
+- `og:image:type` falls back to the extension, and stays absent when the extension is unknown: announcing the wrong MIME type is worse than announcing none
+- `generateMetaTags()` accepts `int` option values, so dimensions need no casting at the call site
+- Behaviour change: a relative image with no active request now throws `LogicException`, where it was previously emitted unresolved. Building an absolute URL requires a host, and a silently relative tag is the failure this release exists to remove
+
 ## v1.3.0 - 2026-08-16
 
 Canonical and `og:url` no longer carry tracking parameters.
