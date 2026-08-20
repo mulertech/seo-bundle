@@ -26,6 +26,18 @@
     {% endif %}
     {% if seo['og:image'] is defined and seo['og:image'] %}
         <meta property="og:image" content="{{ seo['og:image'] }}">
+        {% if seo['og:image:width'] is defined and seo['og:image:width'] %}
+            <meta property="og:image:width" content="{{ seo['og:image:width'] }}">
+        {% endif %}
+        {% if seo['og:image:height'] is defined and seo['og:image:height'] %}
+            <meta property="og:image:height" content="{{ seo['og:image:height'] }}">
+        {% endif %}
+        {% if seo['og:image:type'] is defined and seo['og:image:type'] %}
+            <meta property="og:image:type" content="{{ seo['og:image:type'] }}">
+        {% endif %}
+        {% if seo['og:image:alt'] is defined and seo['og:image:alt'] %}
+            <meta property="og:image:alt" content="{{ seo['og:image:alt'] }}">
+        {% endif %}
     {% endif %}
 
     {% if seo['article:published_time'] is defined and seo['article:published_time'] %}
@@ -49,5 +61,8 @@
     {% endif %}
     {% if seo['twitter:image'] is defined and seo['twitter:image'] %}
         <meta name="twitter:image" content="{{ seo['twitter:image'] }}">
+        {% if seo['twitter:image:alt'] is defined and seo['twitter:image:alt'] %}
+            <meta name="twitter:image:alt" content="{{ seo['twitter:image:alt'] }}">
+        {% endif %}
     {% endif %}
 {% endif %}

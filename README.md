@@ -26,8 +26,15 @@ composer require mulertech/seo-bundle
 ```yaml
 # config/packages/mulertech_seo.yaml
 mulertech_seo:
-    default_image: '/images/og-default.webp'  # Default OG/Twitter image
-    default_locale: 'fr_FR'                    # Default og:locale
+    # Fallback for og:image / twitter:image. A path is resolved against the host of the
+    # current request, so one value serves every environment. Use JPEG or PNG at
+    # 1200x630: LinkedIn refuses WebP outright, and Facebook downgrades to a square
+    # thumbnail below 600x315.
+    default_image: '/images/og-default.jpg'
+    default_image_width: 1200
+    default_image_height: 630
+    default_image_alt: 'MulerTech'
+    default_locale: 'fr_FR'  # Default og:locale
 
     # Query parameters stripped from canonical and og:url. Omit the key to keep the
     # defaults (utm_*, gclid, fbclid, msclkid, ttclid, twclid, igshid, mc_cid, mc_eid,
@@ -121,6 +128,18 @@ class HomeController extends AbstractController
     }
 }
 ```
+
+| Option | Effect |
+|---|---|
+| `title`, `description` | Truncated to 60 and 160 characters |
+| `url` | Overrides the canonical, which otherwise comes from the request |
+| `type` | `website` by default; `article` unlocks the three `article:*` options below |
+| `image` | Overrides `default_image`. A path is resolved against the current host |
+| `imageWidth`, `imageHeight` | Declared as `og:image:width` / `og:image:height`. Worth passing: without them Facebook must download the image before deciding whether it fills a large card, and the first share of a freshly published page is the one that matters |
+| | A page that supplies its own `image` never inherits `default_image_width` / `default_image_height` / `default_image_alt`: they describe the fallback image only |
+| `imageAlt` | Declared as `og:image:alt` and `twitter:image:alt` |
+| `imageType` | Overrides the MIME type, which is otherwise read from the extension |
+| `publishedTime`, `modifiedTime`, `author` | `article` type only |
 
 Include the meta tags template in your `<head>`:
 

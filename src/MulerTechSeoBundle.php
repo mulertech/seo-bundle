@@ -34,7 +34,19 @@ final class MulerTechSeoBundle extends AbstractBundle
             ->children()
                 ->scalarNode('default_image')
                     ->defaultNull()
-                    ->info('Default OG/Twitter image URL (absolute or relative to base URL)')
+                    ->info('Default OG/Twitter image. A path is resolved against the host of the current request. Use JPEG or PNG at 1200x630: LinkedIn refuses WebP, and Facebook downgrades to a square thumbnail below 600x315.')
+                ->end()
+                ->integerNode('default_image_width')
+                    ->defaultNull()
+                    ->info('Width of default_image. Declared as og:image:width so Facebook can settle on the large card during the first crawl instead of downloading the image to decide.')
+                ->end()
+                ->integerNode('default_image_height')
+                    ->defaultNull()
+                    ->info('Height of default_image, declared as og:image:height')
+                ->end()
+                ->scalarNode('default_image_alt')
+                    ->defaultNull()
+                    ->info('Alternative text for default_image, declared as og:image:alt and twitter:image:alt')
                 ->end()
                 ->scalarNode('default_locale')
                     ->defaultValue('fr_FR')
@@ -159,6 +171,9 @@ final class MulerTechSeoBundle extends AbstractBundle
                 '$defaultImage' => $config['default_image'],
                 '$defaultLocale' => $config['default_locale'],
                 '$ignoredParameters' => array_values((array) $config['canonical_ignored_parameters']),
+                '$defaultImageWidth' => $config['default_image_width'],
+                '$defaultImageHeight' => $config['default_image_height'],
+                '$defaultImageAlt' => $config['default_image_alt'],
             ]);
 
         $container->services()
