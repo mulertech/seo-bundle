@@ -1,5 +1,31 @@
 # Release notes for seo-bundle
 
+## v1.5.0 - 2026-08-21
+
+Structured data was encoded without `JSON_HEX_TAG`, so a value holding `</script>` closed the
+element early and the rest of the payload landed in the page as markup rather than data. Any field
+fed from the database could carry one, a blog post title first of all.
+
+- `robots.groups` declares additional `User-agent` groups, and `robots.allow_paths` adds `Allow`
+  lines to the `*` group. A crawler obeys the single group matching it best and ignores every other,
+  `*` included, so a rule aimed at one robot had no way to be expressed, and a group carrying such a
+  rule repeats whatever of `disallow_paths` should keep binding that robot
+- The `*` group no longer opens with `Allow: /` when `disallow_paths` closes `/`: equal-length rules
+  tie, the tie goes to the allow, and the site stayed crawlable while the configuration said the
+  opposite
+- A configuration holding `/` in both `allow_paths` and `disallow_paths`, or in a group's `allow` and
+  `disallow`, is refused when the container compiles rather than settled silently in favour of the
+  allow
+- A robots group declaring neither `allow` nor `disallow` is refused as well: it leaves its crawler
+  unrestricted, which is already what omitting the group does
+- `schema_org.logo` and `schema_org.founder_name` extend the Organization schema. A logo path is
+  resolved against the host of the current request, as `default_image` already was
+- `schema_org_json_ld()` takes a `nonce` argument, for pages served under a Content Security Policy
+  naming a nonce for `script-src`
+- An image or a logo that cannot be resolved names itself in the error, along with the setting to fix
+- No breaking change for a configuration that meant what it said: every new key has a default and the
+  `nonce` argument is optional. The refusals reject only rules that cancelled each other out
+
 ## v1.4.0 - 2026-08-20
 
 `og:image` and `twitter:image` are now absolute, and the image can declare its dimensions.
