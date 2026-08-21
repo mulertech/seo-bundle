@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
 final readonly class MetaTagService
 {
     use AbsoluteUrlTrait;
+    use CurrentUrlTrait;
 
     /**
      * Query parameters that name where a visitor came from rather than what they asked
@@ -156,31 +157,9 @@ final readonly class MetaTagService
         };
     }
 
-    /**
-     * The current address, minus the parameters that only say where the visitor came from.
-     *
-     * This value becomes both `canonical` and `og:url`, which is why the distinction
-     * matters: a tracking parameter left in place makes the tracked address the one search
-     * engines treat as official, and the one carried by anyone resharing the page — so a
-     * campaign ends up credited with visits that came from elsewhere.
-     *
-     * Parameters that change what the page shows are kept. Dropping them all would be
-     * simpler and wrong: a paginated page canonicalised to its first page is declared a
-     * duplicate of it, and drops out of the index.
-     */
     private function getCurrentUrl(): string
     {
-        $request = $this->getRequest();
-
-        $parameters = $request->query->all();
-
-        foreach ($this->ignoredParameters as $parameter) {
-            unset($parameters[$parameter]);
-        }
-
-        $url = $request->getUriForPath($request->getPathInfo());
-
-        return [] === $parameters ? $url : $url.'?'.http_build_query($parameters);
+        return $this->currentUrlWithout($this->ignoredParameters, $this->getRequest());
     }
 
     private function getRequest(): Request

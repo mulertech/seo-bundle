@@ -223,6 +223,17 @@ final class MulerTechSeoBundleTest extends TestCase
         ]);
     }
 
+    public function testTwigExtensionSharesTheCanonicalIgnoredParameters(): void
+    {
+        $containerBuilder = $this->loadBundleConfig([
+            'canonical_ignored_parameters' => ['s', 'fbclid'],
+        ]);
+
+        $args = $containerBuilder->getDefinition('mulertech_seo.twig_extension')->getArguments();
+
+        self::assertSame(['s', 'fbclid'], $args['$ignoredParameters']);
+    }
+
     public function testLoadExtensionRegistersSchemaOrgLogoAndFounder(): void
     {
         $containerBuilder = $this->loadBundleConfig([

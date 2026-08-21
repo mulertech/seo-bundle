@@ -11,10 +11,15 @@ use Symfony\Component\HttpFoundation\RequestStack;
 final readonly class SchemaOrgService
 {
     use AbsoluteUrlTrait;
+    use CurrentUrlTrait;
 
     /**
      * @param array<int, array{type: string, name: string}> $areasServed
      * @param array<int, string>                            $offerNames
+     * @param list<string>                                  $ignoredParameters query parameters
+     *                                                                         stripped from the
+     *                                                                         address a breadcrumb
+     *                                                                         falls back to
      */
     public function __construct(
         private SeoCompanyInfoProviderInterface $companyInfoProvider,
@@ -28,6 +33,7 @@ final readonly class SchemaOrgService
         private array $areasServed = [],
         private array $offerNames = [],
         private string $searchActionPathTemplate = '',
+        private array $ignoredParameters = MetaTagService::TRACKING_PARAMETERS,
     ) {
     }
 
@@ -136,7 +142,7 @@ final readonly class SchemaOrgService
                 '@type' => 'ListItem',
                 'position' => $index + 1,
                 'name' => $item['label'],
-                'item' => $item['url'] ?? $this->requestStack->getCurrentRequest()?->getUri() ?? '',
+                'item' => $item['url'] ?? $this->currentUrl(),
             ];
         }
 
@@ -209,6 +215,13 @@ final readonly class SchemaOrgService
         }
 
         return $schema;
+    }
+
+    private function currentUrl(): string
+    {
+        $request = $this->requestStack->getCurrentRequest();
+
+        return null === $request ? '' : $this->currentUrlWithout($this->ignoredParameters, $request);
     }
 
     /**

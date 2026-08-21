@@ -198,4 +198,46 @@ final class SeoExtensionTest extends TestCase
 
         self::assertStringStartsWith('<script type="application/ld+json">', $result);
     }
+
+    /**
+     * The canonical drops tracking parameters, and the addresses inside the structured data
+     * have to follow: a `Service` url or a breadcrumb entry naming the tracked address
+     * contradicts the canonical sitting a few lines above it.
+     */
+    public function testStructuredDataAddressesDropTrackingParameters(): void
+    {
+        $companyInfo = $this->createStub(SeoCompanyInfoProviderInterface::class);
+        $companyInfo->method('getName')->willReturn('TestCompany');
+        $companyInfo->method('getSocialUrls')->willReturn([]);
+
+        $requestStack = new RequestStack();
+        $requestStack->push(Request::create('https://example.com/page?fbclid=IwAR123&page=2'));
+
+        $extension = new SeoExtension(new SchemaOrgService($companyInfo, $requestStack), $requestStack);
+
+        $service = $extension->schemaOrgJsonLd('service', ['title' => 'Audit', 'description' => 'Audit complet']);
+        self::assertStringContainsString('"url": "https://example.com/page?page=2"', $service);
+
+        $breadcrumb = $extension->schemaOrgJsonLd('breadcrumbList', [
+            ['label' => 'Home', 'url' => 'https://example.com/'],
+            ['label' => 'Audit', 'url' => null],
+        ]);
+        self::assertStringContainsString('"item": "https://example.com/page?page=2"', $breadcrumb);
+    }
+
+    public function testIgnoredParametersFollowTheConfiguredList(): void
+    {
+        $companyInfo = $this->createStub(SeoCompanyInfoProviderInterface::class);
+        $companyInfo->method('getName')->willReturn('TestCompany');
+        $companyInfo->method('getSocialUrls')->willReturn([]);
+
+        $requestStack = new RequestStack();
+        $requestStack->push(Request::create('https://example.com/page?s=instagram&fbclid=IwAR123'));
+
+        $extension = new SeoExtension(new SchemaOrgService($companyInfo, $requestStack), $requestStack, ['s']);
+
+        $service = $extension->schemaOrgJsonLd('service', ['title' => 'Audit']);
+
+        self::assertStringContainsString('"url": "https://example.com/page?fbclid=IwAR123"', $service);
+    }
 }

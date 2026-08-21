@@ -237,6 +237,7 @@ final class MulerTechSeoBundle extends AbstractBundle
                 '$areasServed' => $schemaOrg['areas_served'],
                 '$offerNames' => $schemaOrg['offer_names'],
                 '$searchActionPathTemplate' => $schemaOrg['search_action_path_template'],
+                '$ignoredParameters' => array_values((array) $config['canonical_ignored_parameters']),
             ]);
 
         $container->services()
@@ -309,6 +310,7 @@ final class MulerTechSeoBundle extends AbstractBundle
                 ->args([
                     '$schemaOrgService' => new Reference('mulertech_seo.schema_org'),
                     '$requestStack' => new Reference('request_stack'),
+                    '$ignoredParameters' => array_values((array) $config['canonical_ignored_parameters']),
                 ])
                 ->tag('twig.extension');
         }

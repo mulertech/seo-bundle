@@ -5,16 +5,27 @@ declare(strict_types=1);
 namespace MulerTech\SeoBundle\Twig;
 
 use MulerTech\SeoBundle\Model\BlogPostingSeoInterface;
+use MulerTech\SeoBundle\Service\CurrentUrlTrait;
+use MulerTech\SeoBundle\Service\MetaTagService;
 use MulerTech\SeoBundle\Service\SchemaOrgService;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
 final class SeoExtension extends AbstractExtension
 {
+    use CurrentUrlTrait;
+
+    /**
+     * @param list<string> $ignoredParameters query parameters stripped from the addresses
+     *                                        the structured data declares, kept in step
+     *                                        with the canonical through the same config key
+     */
     public function __construct(
         private readonly SchemaOrgService $schemaOrgService,
         private readonly RequestStack $requestStack,
+        private readonly array $ignoredParameters = MetaTagService::TRACKING_PARAMETERS,
     ) {
     }
 
@@ -89,17 +100,17 @@ final class SeoExtension extends AbstractExtension
 
     private function getSiteUrl(): string
     {
-        $request = $this->requestStack->getCurrentRequest()
-            ?? throw new \LogicException('SeoExtension requires an active HTTP request — cannot be used in CLI context');
-
-        return $request->getSchemeAndHttpHost();
+        return $this->getRequest()->getSchemeAndHttpHost();
     }
 
     private function getCurrentUrl(): string
     {
-        $request = $this->requestStack->getCurrentRequest()
-            ?? throw new \LogicException('SeoExtension requires an active HTTP request — cannot be used in CLI context');
+        return $this->currentUrlWithout($this->ignoredParameters, $this->getRequest());
+    }
 
-        return $request->getUri();
+    private function getRequest(): Request
+    {
+        return $this->requestStack->getCurrentRequest()
+            ?? throw new \LogicException('SeoExtension requires an active HTTP request — cannot be used in CLI context');
     }
 }

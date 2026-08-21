@@ -179,9 +179,11 @@ Include the meta tags template in your `<head>`:
 {# Service (in service/show.html.twig) #}
 {{ schema_org_json_ld('service', { title: 'Web Dev', description: 'Custom apps' }) }}
 
-{# Breadcrumbs #}
+{# Breadcrumbs. `url()`, not `path()`: schema.org reads `item` as an address in its own
+   right, and a relative one leaves the trail pointing nowhere. A null url falls back to
+   the current request, which suits the last entry. #}
 {{ schema_org_json_ld('breadcrumbList', [
-    { label: 'Home', url: path('app_home') },
+    { label: 'Home', url: url('app_home') },
     { label: 'Blog', url: null }
 ]) }}
 ```
