@@ -169,4 +169,33 @@ final class SeoExtensionTest extends TestCase
 
         self::assertSame('', $result);
     }
+
+    public function testJsonLdCarriesNoNonceAttributeByDefault(): void
+    {
+        $result = $this->extension->schemaOrgJsonLd('organization');
+
+        self::assertStringStartsWith('<script type="application/ld+json">', $result);
+    }
+
+    public function testJsonLdCarriesTheGivenNonce(): void
+    {
+        $result = $this->extension->schemaOrgJsonLd('organization', nonce: 'r4nd0m');
+
+        self::assertStringStartsWith('<script type="application/ld+json" nonce="r4nd0m">', $result);
+    }
+
+    public function testJsonLdEscapesTheNonce(): void
+    {
+        $result = $this->extension->schemaOrgJsonLd('organization', nonce: 'a"><script>alert(1)</script>');
+
+        self::assertStringNotContainsString('<script>alert(1)</script>', $result);
+        self::assertStringContainsString('nonce="a&quot;&gt;&lt;script&gt;', $result);
+    }
+
+    public function testEmptyNonceAddsNoAttribute(): void
+    {
+        $result = $this->extension->schemaOrgJsonLd('organization', nonce: '');
+
+        self::assertStringStartsWith('<script type="application/ld+json">', $result);
+    }
 }

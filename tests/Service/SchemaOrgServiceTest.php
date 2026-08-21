@@ -228,4 +228,74 @@ final class SchemaOrgServiceTest extends TestCase
         self::assertArrayNotHasKey('hasOfferCatalog', $result);
         self::assertArrayNotHasKey('sameAs', $result);
     }
+
+    public function testOrganizationOmitsLogoAndFounderWhenNotConfigured(): void
+    {
+        $result = $this->service->organization();
+
+        self::assertArrayNotHasKey('logo', $result);
+        self::assertArrayNotHasKey('founder', $result);
+    }
+
+    public function testOrganizationResolvesALogoPathAgainstTheCurrentHost(): void
+    {
+        $result = $this->serviceWithLogo('/images/logo.png')->organization();
+
+        self::assertSame('https://example.com/images/logo.png', $result['logo']);
+    }
+
+    public function testOrganizationKeepsAnAbsoluteLogoUrl(): void
+    {
+        $result = $this->serviceWithLogo('https://cdn.example.com/logo.png')->organization();
+
+        self::assertSame('https://cdn.example.com/logo.png', $result['logo']);
+    }
+
+    public function testOrganizationRejectsALogoPathWithoutRequest(): void
+    {
+        $service = new SchemaOrgService(
+            $this->createStub(SeoCompanyInfoProviderInterface::class),
+            new RequestStack(),
+            logo: '/images/logo.png',
+        );
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('mulertech_seo.schema_org.logo');
+
+        $service->organization();
+    }
+
+    public function testOrganizationDeclaresTheFounderAsAPerson(): void
+    {
+        $requestStack = new RequestStack();
+        $requestStack->push(Request::create('https://example.com/current-page'));
+
+        $service = new SchemaOrgService(
+            $this->createStub(SeoCompanyInfoProviderInterface::class),
+            $requestStack,
+            founderName: 'Jane Doe',
+        );
+
+        self::assertSame(['@type' => 'Person', 'name' => 'Jane Doe'], $service->organization()['founder']);
+    }
+
+    public function testToJsonLdNeutralisesAClosingScriptTag(): void
+    {
+        $json = $this->service->toJsonLd(['name' => 'Break</script><script>alert(1)</script>']);
+
+        self::assertStringNotContainsString('</script>', $json);
+        self::assertStringContainsString('\u003C/script\u003E', $json);
+    }
+
+    private function serviceWithLogo(string $logo): SchemaOrgService
+    {
+        $requestStack = new RequestStack();
+        $requestStack->push(Request::create('https://example.com/current-page'));
+
+        return new SchemaOrgService(
+            $this->createStub(SeoCompanyInfoProviderInterface::class),
+            $requestStack,
+            logo: $logo,
+        );
+    }
 }

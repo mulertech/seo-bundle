@@ -72,6 +72,14 @@ final class MulerTechSeoBundle extends AbstractBundle
                         ->scalarNode('address_region')
                             ->defaultValue('')
                         ->end()
+                        ->scalarNode('logo')
+                            ->defaultValue('')
+                            ->info('Organization logo, declared as schema.org logo. A path is resolved against the host of the current request. Google reads it for the knowledge panel and ignores a relative URL.')
+                        ->end()
+                        ->scalarNode('founder_name')
+                            ->defaultValue('')
+                            ->info('Name of the person who founded the organization, declared as schema.org founder')
+                        ->end()
                         ->scalarNode('search_action_path_template')
                             ->defaultValue('')
                             ->info('Path appended to site URL for SearchAction (e.g. /blog?q={search_term_string})')
@@ -95,7 +103,43 @@ final class MulerTechSeoBundle extends AbstractBundle
                         ->arrayNode('disallow_paths')
                             ->scalarPrototype()->end()
                             ->defaultValue(['/admin', '/login'])
+                            ->info('Disallow lines of the "*" group, obeyed by every crawler without a group of its own')
                         ->end()
+                        ->arrayNode('allow_paths')
+                            ->scalarPrototype()->end()
+                            ->info('Extra Allow lines for the "*" group, to reopen one path inside a disallowed section. The longest matching rule wins, so Allow: /admin/help survives Disallow: /admin.')
+                        ->end()
+                        ->arrayNode('groups')
+                            ->info('Additional User-agent groups. A crawler obeys the single group matching it best and ignores "*", so a rule aimed at one robot belongs in its own group rather than in disallow_paths.')
+                            ->arrayPrototype()
+                                ->children()
+                                    ->arrayNode('user_agents')
+                                        ->scalarPrototype()->end()
+                                        ->isRequired()
+                                        ->requiresAtLeastOneElement()
+                                        ->info('Robot names this group applies to, as they appear in their User-agent header')
+                                    ->end()
+                                    ->arrayNode('allow')
+                                        ->scalarPrototype()->end()
+                                    ->end()
+                                    ->arrayNode('disallow')
+                                        ->scalarPrototype()->end()
+                                    ->end()
+                                ->end()
+                                ->validate()
+                                    ->ifTrue(static fn (mixed $group): bool => \is_array($group) && [] === ($group['allow'] ?? []) && [] === ($group['disallow'] ?? []))
+                                    ->thenInvalid('A robots group needs at least one allow or disallow path: a group holding no rule leaves its crawler unrestricted, which is already what omitting it does.')
+                                ->end()
+                                ->validate()
+                                    ->ifTrue(static fn (mixed $group): bool => \is_array($group) && \in_array('/', (array) ($group['allow'] ?? []), true) && \in_array('/', (array) ($group['disallow'] ?? []), true))
+                                    ->thenInvalid('A robots group holds "/" in both allow and disallow. Equal-length rules tie, the tie goes to the allow, so the group ends up letting its crawler through: drop "/" from disallow to say so plainly, or from allow to shut the crawler out.')
+                                ->end()
+                            ->end()
+                        ->end()
+                    ->end()
+                    ->validate()
+                        ->ifTrue(static fn (mixed $robots): bool => \is_array($robots) && \in_array('/', (array) ($robots['allow_paths'] ?? []), true) && \in_array('/', (array) ($robots['disallow_paths'] ?? []), true))
+                        ->thenInvalid('mulertech_seo.robots holds "/" in both allow_paths and disallow_paths. Equal-length rules tie, the tie goes to the allow, so the site stays crawlable and one of the two keys says nothing: drop "/" from allow_paths to close the site, or from disallow_paths to open it.')
                     ->end()
                 ->end()
                 ->arrayNode('llms')
@@ -188,6 +232,8 @@ final class MulerTechSeoBundle extends AbstractBundle
                 '$organizationType' => $schemaOrg['organization_type'],
                 '$priceRange' => $schemaOrg['price_range'],
                 '$addressRegion' => $schemaOrg['address_region'],
+                '$logo' => $schemaOrg['logo'],
+                '$founderName' => $schemaOrg['founder_name'],
                 '$areasServed' => $schemaOrg['areas_served'],
                 '$offerNames' => $schemaOrg['offer_names'],
                 '$searchActionPathTemplate' => $schemaOrg['search_action_path_template'],
@@ -222,6 +268,8 @@ final class MulerTechSeoBundle extends AbstractBundle
                 '$urlGenerator' => new Reference('router'),
                 '$environment' => '%kernel.environment%',
                 '$disallowPaths' => $robots['disallow_paths'],
+                '$allowPaths' => $robots['allow_paths'],
+                '$groups' => $robots['groups'],
             ])
             ->tag('controller.service_arguments');
 

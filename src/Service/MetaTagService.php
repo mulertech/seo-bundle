@@ -10,6 +10,8 @@ use Symfony\Component\HttpFoundation\RequestStack;
 
 final readonly class MetaTagService
 {
+    use AbsoluteUrlTrait;
+
     /**
      * Query parameters that name where a visitor came from rather than what they asked
      * for. Advertising platforms and social networks append these on their own, so a page
@@ -124,29 +126,13 @@ final readonly class MetaTagService
         return mb_substr($text, 0, $maxLength - 3).'...';
     }
 
-    /**
-     * Open Graph requires a fully qualified URL. Facebook resolves a bare path out of
-     * leniency, but LinkedIn, WhatsApp and Slack drop the image altogether — so a site
-     * declaring `/images/card.jpg` shares with no preview at all on those three, and the
-     * omission is invisible from the markup, which looks correct.
-     */
     private function absolutize(string|int|null $image): ?string
     {
         if (null === $image || '' === $image) {
             return null;
         }
 
-        $image = (string) $image;
-
-        if (null !== parse_url($image, \PHP_URL_SCHEME)) {
-            return $image;
-        }
-
-        if (str_starts_with($image, '//')) {
-            return $this->getRequest()->getScheme().':'.$image;
-        }
-
-        return $this->getRequest()->getSchemeAndHttpHost().'/'.ltrim($image, '/');
+        return $this->absolutizeUrl((string) $image, $this->requestStack, 'The Open Graph image');
     }
 
     /**

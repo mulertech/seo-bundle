@@ -50,6 +50,12 @@ mulertech_seo:
         organization_description: 'Your company description'
         price_range: '€€'
         address_region: 'Normandie'
+        # Declared as schema.org logo, which Google reads for the knowledge panel. A path is
+        # resolved against the host of the current request; a relative URL is ignored, so
+        # outside an HTTP context (a console command rendering a template) configure an
+        # absolute one.
+        logo: '/images/logo.png'
+        founder_name: 'Jane Doe'
         search_action_path_template: '/blog?q={search_term_string}'
         areas_served:
             - { type: 'City', name: 'Caen' }
@@ -60,9 +66,20 @@ mulertech_seo:
             - 'Hosting'
             - 'Maintenance'
     robots:
+        # Disallow lines of the '*' group, obeyed by every crawler without a group of its own.
         disallow_paths:
             - '/admin'
             - '/login'
+        # Extra Allow lines for the '*' group. The longest matching rule wins, so this one
+        # reopens a single path inside a disallowed section.
+        allow_paths:
+            - '/admin/help'
+        # A crawler obeys the single group whose User-agent matches it best and ignores every
+        # other, '*' included. A rule aimed at one robot therefore needs its own group, and
+        # that group repeats whatever of disallow_paths should keep binding that robot.
+        groups:
+            - user_agents: ['HTTrack', 'WebCopier', 'WebZIP']
+              disallow: ['/']
     llms:
         enabled: true                             # Serve the /llms.txt route
         title: 'My Company'                       # H1 (defaults to company name)
@@ -167,6 +184,15 @@ Include the meta tags template in your `<head>`:
     { label: 'Home', url: path('app_home') },
     { label: 'Blog', url: null }
 ]) }}
+```
+
+A JSON-LD block is data rather than code, so a browser never executes it and usually raises no
+Content Security Policy violation. Enforcement is not uniform, though, and a policy naming a nonce
+for `script-src` is written for `<script>` elements whatever their type. Passing the nonce settles
+the question and keeps the violation reports clean:
+
+```twig
+{{ schema_org_json_ld('organization', nonce=csp_nonce('main')) }}
 ```
 
 For `blogPosting`, your entity must implement `BlogPostingSeoInterface`:

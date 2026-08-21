@@ -54,4 +54,60 @@ final class RobotsControllerTest extends TestCase
         self::assertStringContainsString('Disallow: /api', $response->getContent());
         self::assertStringContainsString('Disallow: /private', $response->getContent());
     }
+
+    public function testAdditionalGroupGetsItsOwnBlock(): void
+    {
+        $urlGenerator = $this->createStub(UrlGeneratorInterface::class);
+        $urlGenerator->method('generate')->willReturn('https://example.com/sitemap.xml');
+
+        $controller = new RobotsController($urlGenerator, 'prod', ['/admin'], [], [
+            [
+                'user_agents' => ['HTTrack', 'WebCopier'],
+                'allow' => [],
+                'disallow' => ['/'],
+            ],
+        ]);
+
+        $content = (string) $controller()->getContent();
+
+        self::assertStringContainsString("User-agent: *\nAllow: /\nDisallow: /admin", $content);
+        self::assertStringContainsString("User-agent: HTTrack\nUser-agent: WebCopier\nDisallow: /", $content);
+    }
+
+    public function testAllowPathsReopenAPathInsideADisallowedSection(): void
+    {
+        $urlGenerator = $this->createStub(UrlGeneratorInterface::class);
+        $urlGenerator->method('generate')->willReturn('https://example.com/sitemap.xml');
+
+        $controller = new RobotsController($urlGenerator, 'prod', ['/admin'], ['/admin/help']);
+
+        $content = (string) $controller()->getContent();
+
+        self::assertStringContainsString("Allow: /\nAllow: /admin/help\nDisallow: /admin", $content);
+    }
+
+    public function testGroupsCarryNoBlankLineWhenAPathListIsEmpty(): void
+    {
+        $urlGenerator = $this->createStub(UrlGeneratorInterface::class);
+        $urlGenerator->method('generate')->willReturn('https://example.com/sitemap.xml');
+
+        $controller = new RobotsController($urlGenerator, 'prod', []);
+
+        $content = (string) $controller()->getContent();
+
+        self::assertSame("User-agent: *\nAllow: /\n\nSitemap: https://example.com/sitemap.xml\n", $content);
+    }
+
+    public function testClosingTheWholeSiteDropsTheBlanketAllow(): void
+    {
+        $urlGenerator = $this->createStub(UrlGeneratorInterface::class);
+        $urlGenerator->method('generate')->willReturn('https://example.com/sitemap.xml');
+
+        $controller = new RobotsController($urlGenerator, 'prod', ['/']);
+
+        $content = (string) $controller()->getContent();
+
+        self::assertStringNotContainsString('Allow: /', $content);
+        self::assertStringContainsString("User-agent: *\nDisallow: /", $content);
+    }
 }

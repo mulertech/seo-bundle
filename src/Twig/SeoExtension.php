@@ -28,7 +28,14 @@ final class SeoExtension extends AbstractExtension
         ];
     }
 
-    public function schemaOrgJsonLd(string $type, mixed $data = null): string
+    /**
+     * @param ?string $nonce CSP nonce for the generated `<script>` element. A JSON-LD block
+     *                       is data rather than code, so browsers rarely report it as a
+     *                       violation, but enforcement is not uniform and a policy naming a
+     *                       nonce for `script-src` is written for `<script>` elements
+     *                       whatever their type
+     */
+    public function schemaOrgJsonLd(string $type, mixed $data = null, ?string $nonce = null): string
     {
         $schema = match ($type) {
             'organization' => $this->schemaOrgService->organization(),
@@ -43,7 +50,11 @@ final class SeoExtension extends AbstractExtension
             return '';
         }
 
-        return '<script type="application/ld+json">'.$this->schemaOrgService->toJsonLd($schema).'</script>';
+        $nonceAttribute = null !== $nonce && '' !== $nonce
+            ? ' nonce="'.htmlspecialchars($nonce, \ENT_QUOTES, 'UTF-8').'"'
+            : '';
+
+        return '<script type="application/ld+json"'.$nonceAttribute.'>'.$this->schemaOrgService->toJsonLd($schema).'</script>';
     }
 
     /**

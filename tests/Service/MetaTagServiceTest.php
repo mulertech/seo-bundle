@@ -435,4 +435,29 @@ final class MetaTagServiceTest extends TestCase
 
         return new MetaTagService($requestStack, $companyInfo, $defaultImage);
     }
+
+    public function testAbsoluteImageNeedsNoRequest(): void
+    {
+        $companyInfo = $this->createStub(SeoCompanyInfoProviderInterface::class);
+        $companyInfo->method('getName')->willReturn('TestCompany');
+
+        $service = new MetaTagService(new RequestStack(), $companyInfo, 'https://cdn.example.com/card.jpg');
+
+        $result = $service->generateMetaTags(['title' => 'Page', 'url' => 'https://example.com/page']);
+
+        self::assertSame('https://cdn.example.com/card.jpg', $result['og:image']);
+    }
+
+    public function testImagePathWithoutRequestNamesWhatCannotBeResolved(): void
+    {
+        $companyInfo = $this->createStub(SeoCompanyInfoProviderInterface::class);
+        $companyInfo->method('getName')->willReturn('TestCompany');
+
+        $service = new MetaTagService(new RequestStack(), $companyInfo, '/images/card.jpg');
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('The Open Graph image holds the path "/images/card.jpg"');
+
+        $service->generateMetaTags(['title' => 'Page', 'url' => 'https://example.com/page']);
+    }
 }

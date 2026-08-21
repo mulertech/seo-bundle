@@ -14,6 +14,7 @@ use MulerTech\SeoBundle\Service\MetaTagService;
 use MulerTech\SeoBundle\Service\SchemaOrgService;
 use MulerTech\SeoBundle\Service\SitemapService;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\Config\Loader\DelegatingLoader;
 use Symfony\Component\Config\Loader\LoaderResolver;
@@ -145,6 +146,96 @@ final class MulerTechSeoBundleTest extends TestCase
         $args = $definition->getArguments();
 
         self::assertSame(['/admin', '/api', '/private'], $args['$disallowPaths']);
+    }
+
+    public function testLoadExtensionRegistersRobotsControllerWithGroups(): void
+    {
+        $containerBuilder = $this->loadBundleConfig([
+            'robots' => [
+                'allow_paths' => ['/admin/help'],
+                'groups' => [
+                    [
+                        'user_agents' => ['HTTrack'],
+                        'disallow' => ['/'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $args = $containerBuilder->getDefinition('mulertech_seo.controller.robots')->getArguments();
+
+        self::assertSame(['/admin/help'], $args['$allowPaths']);
+        self::assertEquals([['user_agents' => ['HTTrack'], 'allow' => [], 'disallow' => ['/']]], $args['$groups']);
+    }
+
+    public function testLoadExtensionDefaultsToNoAllowPathAndNoGroup(): void
+    {
+        $containerBuilder = $this->loadBundleConfig([]);
+
+        $args = $containerBuilder->getDefinition('mulertech_seo.controller.robots')->getArguments();
+
+        self::assertSame([], $args['$allowPaths']);
+        self::assertSame([], $args['$groups']);
+    }
+
+    public function testLoadExtensionRejectsARobotsGroupWithoutRule(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('at least one allow or disallow path');
+
+        $this->loadBundleConfig([
+            'robots' => [
+                'groups' => [
+                    ['user_agents' => ['HTTrack']],
+                ],
+            ],
+        ]);
+    }
+
+    public function testLoadExtensionRejectsRootAllowedAndDisallowedAtOnce(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('both allow_paths and disallow_paths');
+
+        $this->loadBundleConfig([
+            'robots' => [
+                'allow_paths' => ['/'],
+                'disallow_paths' => ['/'],
+            ],
+        ]);
+    }
+
+    public function testLoadExtensionRejectsAGroupAllowingAndDisallowingRoot(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('"/" in both allow and disallow');
+
+        $this->loadBundleConfig([
+            'robots' => [
+                'groups' => [
+                    [
+                        'user_agents' => ['HTTrack'],
+                        'allow' => ['/'],
+                        'disallow' => ['/'],
+                    ],
+                ],
+            ],
+        ]);
+    }
+
+    public function testLoadExtensionRegistersSchemaOrgLogoAndFounder(): void
+    {
+        $containerBuilder = $this->loadBundleConfig([
+            'schema_org' => [
+                'logo' => '/images/logo.png',
+                'founder_name' => 'Jane Doe',
+            ],
+        ]);
+
+        $args = $containerBuilder->getDefinition('mulertech_seo.schema_org')->getArguments();
+
+        self::assertSame('/images/logo.png', $args['$logo']);
+        self::assertSame('Jane Doe', $args['$founderName']);
     }
 
     public function testLoadExtensionRegistersLlmsServicesWithDefaults(): void

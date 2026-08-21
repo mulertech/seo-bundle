@@ -10,6 +10,8 @@ use Symfony\Component\HttpFoundation\RequestStack;
 
 final readonly class SchemaOrgService
 {
+    use AbsoluteUrlTrait;
+
     /**
      * @param array<int, array{type: string, name: string}> $areasServed
      * @param array<int, string>                            $offerNames
@@ -21,6 +23,8 @@ final readonly class SchemaOrgService
         private string $organizationType = 'LocalBusiness',
         private string $priceRange = '',
         private string $addressRegion = '',
+        private string $logo = '',
+        private string $founderName = '',
         private array $areasServed = [],
         private array $offerNames = [],
         private string $searchActionPathTemplate = '',
@@ -48,6 +52,17 @@ final readonly class SchemaOrgService
                 'addressCountry' => $this->companyInfoProvider->getCountry(),
             ],
         ];
+
+        if ('' !== $this->logo) {
+            $schema['logo'] = $this->absolutizeUrl($this->logo, $this->requestStack, 'mulertech_seo.schema_org.logo');
+        }
+
+        if ('' !== $this->founderName) {
+            $schema['founder'] = [
+                '@type' => 'Person',
+                'name' => $this->founderName,
+            ];
+        }
 
         if ([] !== $this->areasServed) {
             $schema['areaServed'] = array_map(
@@ -197,10 +212,14 @@ final readonly class SchemaOrgService
     }
 
     /**
+     * `JSON_HEX_TAG` is what keeps the payload inside its `<script>` element: an entry
+     * holding `</script>` would otherwise close the element early, and the rest of the
+     * data would land in the page as markup, executable in the case of `<script>`.
+     *
      * @param array<string, mixed> $schema
      */
     public function toJsonLd(array $schema): string
     {
-        return json_encode($schema, \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_PRETTY_PRINT) ?: '{}';
+        return json_encode($schema, \JSON_HEX_TAG | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_PRETTY_PRINT) ?: '{}';
     }
 }
