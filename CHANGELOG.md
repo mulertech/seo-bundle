@@ -1,5 +1,23 @@
 # Release notes for seo-bundle
 
+## v1.5.1 - 2026-08-21
+
+Addresses inside the structured data carried the tracking parameters the canonical had already dropped.
+Two places built an address of their own: the Twig extension, for the `url` of a `service` and a `blogPosting`, and the breadcrumb, for an entry whose `url` is left null.
+A page reached through `?fbclid=…` therefore named the tracked address in its structured data while the canonical, a few lines above, named the clean one.
+
+The disagreement is the problem: the last entry of a breadcrumb is meant to be the page itself, and a `Service` url that contradicts the canonical describes a page that does not exist.
+
+- `MetaTagService`, `SeoExtension` and `SchemaOrgService` share `CurrentUrlTrait`, so one rule
+  governs every address a page declares about itself
+- The parameters removed come from `canonical_ignored_parameters` rather than from the constant
+  alone, so a site-specific parameter is stripped from the structured data as well, never from the
+  canonical only
+- README: the breadcrumb example builds its items with `url()`, not `path()`. A relative `item`
+  leaves the trail pointing nowhere, schema.org reading it as an address in its own right
+- No breaking change: the new constructor arguments default to `MetaTagService::TRACKING_PARAMETERS`,
+  and an application declaring nothing behaves as before on clean URLs
+
 ## v1.5.0 - 2026-08-21
 
 Structured data was encoded without `JSON_HEX_TAG`, so a value holding `</script>` closed the
