@@ -1,5 +1,14 @@
 # Release notes for seo-bundle
 
+## v1.6.0 - 2026-09-30
+
+`schema_org_json_ld('faqPage', items)` renders a schema.org `FAQPage` block from a list of `{question, answer}` items. `answer` passes through as HTML: render and sanitise markdown in the application.
+
+- Malformed data throws an `InvalidArgumentException` naming the expected shape, for every type: `blogPosting` outside `BlogPostingSeoInterface`, `service` without a string `title`, `breadcrumbList` and `faqPage` items missing a key or holding the wrong type. These calls used to render nothing, so a broken block went unnoticed until the next SEO audit
+- An unknown type throws, listing the valid ones
+- An empty `breadcrumbList` or `faqPage` list renders nothing: Google rejects either without entries
+- A `Service` without a description no longer declares `"description": ""`
+
 ## v1.5.1 - 2026-08-21
 
 Addresses inside the structured data carried the tracking parameters the canonical had already dropped.
