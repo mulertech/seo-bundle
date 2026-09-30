@@ -154,6 +154,32 @@ final readonly class SchemaOrgService
     }
 
     /**
+     * @param list<array{question: string, answer: string}> $items `answer` may hold the
+     *                                                             restricted HTML Google
+     *                                                             reads in `Answer.text`
+     *
+     * @return array<string, mixed>
+     */
+    public function faqPage(array $items): array
+    {
+        return [
+            '@context' => 'https://schema.org',
+            '@type' => 'FAQPage',
+            'mainEntity' => array_map(
+                static fn (array $item): array => [
+                    '@type' => 'Question',
+                    'name' => $item['question'],
+                    'acceptedAnswer' => [
+                        '@type' => 'Answer',
+                        'text' => $item['answer'],
+                    ],
+                ],
+                $items,
+            ),
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function blogPosting(BlogPostingSeoInterface $post, string $url): array
@@ -198,7 +224,6 @@ final readonly class SchemaOrgService
             '@context' => 'https://schema.org',
             '@type' => 'Service',
             'name' => $serviceData['title'] ?? '',
-            'description' => $serviceData['description'] ?? '',
             'url' => $url,
             'provider' => [
                 '@type' => 'Organization',
@@ -206,6 +231,11 @@ final readonly class SchemaOrgService
                 'url' => $this->companyInfoProvider->getWebsite(),
             ],
         ];
+
+        $description = $serviceData['description'] ?? '';
+        if ('' !== $description) {
+            $schema['description'] = $description;
+        }
 
         if ([] !== $this->areasServed) {
             $schema['areaServed'] = array_map(

@@ -76,11 +76,12 @@ final class SeoExtensionTest extends TestCase
         self::assertStringContainsString('Test Post', $result);
     }
 
-    public function testBlogPostingWithNonInterfaceReturnsEmpty(): void
+    public function testBlogPostingRejectsAnObjectOutsideTheInterface(): void
     {
-        $result = $this->extension->schemaOrgJsonLd('blogPosting', 'not-a-post');
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('schema_org_json_ld("blogPosting") expects an object implementing MulerTech\SeoBundle\Model\BlogPostingSeoInterface, got string.');
 
-        self::assertSame('', $result);
+        $this->extension->schemaOrgJsonLd('blogPosting', 'not-a-post');
     }
 
     public function testServiceWithArray(): void
@@ -91,11 +92,28 @@ final class SeoExtensionTest extends TestCase
         self::assertStringContainsString('Dev', $result);
     }
 
-    public function testServiceWithNonArrayReturnsEmpty(): void
+    public function testServiceRejectsDataThatIsNotAnArray(): void
     {
-        $result = $this->extension->schemaOrgJsonLd('service', 'invalid');
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('schema_org_json_ld("service") expects {title: string, description?: string}, got string.');
 
-        self::assertSame('', $result);
+        $this->extension->schemaOrgJsonLd('service', 'invalid');
+    }
+
+    public function testServiceRejectsAMissingTitle(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('schema_org_json_ld("service") expects a string "title", got null.');
+
+        $this->extension->schemaOrgJsonLd('service', ['description' => 'Web dev']);
+    }
+
+    public function testServiceRejectsADescriptionThatIsNotAString(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('schema_org_json_ld("service") expects a string or null "description", got array.');
+
+        $this->extension->schemaOrgJsonLd('service', ['title' => 'Dev', 'description' => ['Web dev']]);
     }
 
     public function testBreadcrumbListWithArray(): void
@@ -111,11 +129,64 @@ final class SeoExtensionTest extends TestCase
         self::assertStringContainsString('Home', $result);
     }
 
-    public function testUnknownTypeReturnsEmpty(): void
+    public function testUnknownTypeThrowsListingTheValidTypes(): void
     {
-        $result = $this->extension->schemaOrgJsonLd('unknown');
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unknown schema.org type "faq" passed to schema_org_json_ld(); valid types: "organization", "webSite", "blogPosting", "service", "breadcrumbList", "faqPage".');
 
-        self::assertSame('', $result);
+        $this->extension->schemaOrgJsonLd('faq');
+    }
+
+    public function testFaqPageReturnsJsonLdScript(): void
+    {
+        $result = $this->extension->schemaOrgJsonLd('faqPage', [
+            ['question' => 'Quels délais ?', 'answer' => '<p>Deux semaines.</p>'],
+        ], 'r4nd0m');
+
+        self::assertStringStartsWith('<script type="application/ld+json" nonce="r4nd0m">', $result);
+        self::assertStringContainsString('"@type": "FAQPage"', $result);
+        self::assertStringContainsString('"name": "Quels délais ?"', $result);
+        self::assertStringContainsString('"text": "\u003Cp\u003EDeux semaines.\u003C/p\u003E"', $result);
+    }
+
+    public function testFaqPageWithEmptyListReturnsEmpty(): void
+    {
+        self::assertSame('', $this->extension->schemaOrgJsonLd('faqPage', []));
+    }
+
+    public function testFaqPageRejectsDataThatIsNotAList(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('schema_org_json_ld("faqPage") expects a list of {question: string, answer: string}, got string.');
+
+        $this->extension->schemaOrgJsonLd('faqPage', 'invalid');
+    }
+
+    public function testFaqPageRejectsAnItemThatIsNotAnArray(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('schema_org_json_ld("faqPage") expects item 0 to be {question: string, answer: string}, got string.');
+
+        $this->extension->schemaOrgJsonLd('faqPage', ['invalid']);
+    }
+
+    public function testFaqPageRejectsAnItemWithoutAnswer(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('schema_org_json_ld("faqPage") expects item 1 to hold a string "answer", got null.');
+
+        $this->extension->schemaOrgJsonLd('faqPage', [
+            ['question' => 'Q1', 'answer' => 'A1'],
+            ['question' => 'Q2'],
+        ]);
+    }
+
+    public function testFaqPageRejectsAQuestionThatIsNotAString(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('schema_org_json_ld("faqPage") expects item 0 to hold a string "question", got int.');
+
+        $this->extension->schemaOrgJsonLd('faqPage', [['question' => 42, 'answer' => 'A']]);
     }
 
     public function testWebSiteThrowsWithoutRequest(): void
@@ -163,11 +234,36 @@ final class SeoExtensionTest extends TestCase
         $extension->schemaOrgJsonLd('service', ['title' => 'Dev', 'description' => 'Web']);
     }
 
-    public function testBreadcrumbListWithNonArrayReturnsEmpty(): void
+    public function testBreadcrumbListRejectsDataThatIsNotAList(): void
     {
-        $result = $this->extension->schemaOrgJsonLd('breadcrumbList', 'invalid');
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('schema_org_json_ld("breadcrumbList") expects a list of {label: string, url: ?string}, got string.');
 
-        self::assertSame('', $result);
+        $this->extension->schemaOrgJsonLd('breadcrumbList', 'invalid');
+    }
+
+    public function testBreadcrumbListRejectsAnItemWithoutLabel(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('schema_org_json_ld("breadcrumbList") expects item 0 to hold a string "label", got null.');
+
+        $this->extension->schemaOrgJsonLd('breadcrumbList', [['url' => 'https://example.com']]);
+    }
+
+    public function testBreadcrumbListRejectsAnUrlThatIsNeitherStringNorNull(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('schema_org_json_ld("breadcrumbList") expects item 1 to hold a string or null "url", got int.');
+
+        $this->extension->schemaOrgJsonLd('breadcrumbList', [
+            ['label' => 'Home', 'url' => 'https://example.com'],
+            ['label' => 'Page', 'url' => 42],
+        ]);
+    }
+
+    public function testBreadcrumbListWithEmptyListReturnsEmpty(): void
+    {
+        self::assertSame('', $this->extension->schemaOrgJsonLd('breadcrumbList', []));
     }
 
     public function testJsonLdCarriesNoNonceAttributeByDefault(): void

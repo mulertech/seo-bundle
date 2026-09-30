@@ -116,6 +116,31 @@ final class SchemaOrgServiceTest extends TestCase
         self::assertSame('https://example.com/current-page', $result['itemListElement'][1]['item']);
     }
 
+    public function testFaqPage(): void
+    {
+        $result = $this->service->faqPage([
+            ['question' => 'Q1', 'answer' => '<p>A1</p>'],
+            ['question' => 'Q2', 'answer' => 'A2'],
+        ]);
+
+        self::assertSame([
+            '@context' => 'https://schema.org',
+            '@type' => 'FAQPage',
+            'mainEntity' => [
+                [
+                    '@type' => 'Question',
+                    'name' => 'Q1',
+                    'acceptedAnswer' => ['@type' => 'Answer', 'text' => '<p>A1</p>'],
+                ],
+                [
+                    '@type' => 'Question',
+                    'name' => 'Q2',
+                    'acceptedAnswer' => ['@type' => 'Answer', 'text' => 'A2'],
+                ],
+            ],
+        ], $result);
+    }
+
     public function testBlogPosting(): void
     {
         $post = $this->createStub(BlogPostingSeoInterface::class);
@@ -192,6 +217,12 @@ final class SchemaOrgServiceTest extends TestCase
         $result = $this->service->blogPosting($post, 'https://example.com/blog/updated');
 
         self::assertSame('2025-02-20T00:00:00+00:00', $result['dateModified']);
+    }
+
+    public function testServiceOmitsAMissingOrEmptyDescription(): void
+    {
+        self::assertArrayNotHasKey('description', $this->service->service(['title' => 'Dev'], 'https://example.com/dev'));
+        self::assertArrayNotHasKey('description', $this->service->service(['title' => 'Dev', 'description' => ''], 'https://example.com/dev'));
     }
 
     public function testServiceWithoutAreasServed(): void

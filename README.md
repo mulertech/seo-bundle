@@ -186,7 +186,27 @@ Include the meta tags template in your `<head>`:
     { label: 'Home', url: url('app_home') },
     { label: 'Blog', url: null }
 ]) }}
+
+{# FAQ (on the page that displays the questions) #}
+{{ schema_org_json_ld('faqPage', [
+    { question: 'How long does a project take?', answer: '<p>Two to six weeks.</p>' },
+    { question: 'Do you offer maintenance?', answer: '<p>Yes, monthly.</p>' }
+]) }}
 ```
+
+An unknown type, or data that does not match its type, throws an `InvalidArgumentException` naming
+what was expected: a structured data block that silently disappears is only noticed at the next SEO
+audit. `service` takes `{title: string, description?: string}`, `breadcrumbList` a list of
+`{label: string, url: ?string}`, `faqPage` a list of `{question: string, answer: string}`. An empty
+`breadcrumbList` or `faqPage` list renders nothing, so a page with no entries yet needs no condition
+around the call.
+
+For `faqPage`, `answer` passes through as is and may hold the restricted HTML Google reads in `Answer.text`
+(`p`, `br`, `ul`, `ol`, `li`, `a`, `strong`, `em`, headings). The bundle does not convert markdown:
+render and sanitise the answers in the application, which knows the format of its content. The
+questions and answers must be visible on the page itself, or search engines treat the markup as
+misleading. Google shows FAQ rich results only for well-known government and health sites; Bing and
+LLM-based search engines still read the markup.
 
 A JSON-LD block is data rather than code, so a browser never executes it and usually raises no
 Content Security Policy violation. Enforcement is not uniform, though, and a policy naming a nonce
