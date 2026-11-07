@@ -7,12 +7,15 @@ namespace MulerTech\SeoBundle;
 use MulerTech\SeoBundle\Controller\LlmsController;
 use MulerTech\SeoBundle\Controller\RobotsController;
 use MulerTech\SeoBundle\Controller\SitemapController;
+use MulerTech\SeoBundle\Controller\SocialCardController;
 use MulerTech\SeoBundle\Model\LlmsSectionProviderInterface;
 use MulerTech\SeoBundle\Model\SitemapUrlProviderInterface;
+use MulerTech\SeoBundle\Model\SocialCardSourceProviderInterface;
 use MulerTech\SeoBundle\Service\LlmsService;
 use MulerTech\SeoBundle\Service\MetaTagService;
 use MulerTech\SeoBundle\Service\SchemaOrgService;
 use MulerTech\SeoBundle\Service\SitemapService;
+use MulerTech\SeoBundle\Service\SocialCardService;
 use MulerTech\SeoBundle\Twig\SeoExtension;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -142,6 +145,23 @@ final class MulerTechSeoBundle extends AbstractBundle
                         ->thenInvalid('mulertech_seo.robots holds "/" in both allow_paths and disallow_paths. Equal-length rules tie, the tie goes to the allow, so the site stays crawlable and one of the two keys says nothing: drop "/" from allow_paths to close the site, or from disallow_paths to open it.')
                     ->end()
                 ->end()
+                ->arrayNode('social_card')
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('directory')
+                            ->defaultValue('%kernel.project_dir%/var/social-cards')
+                            ->info('Where derived cards are written. They are disposable: anything deleted there is rebuilt on the next request')
+                        ->end()
+                        ->scalarNode('background')
+                            ->defaultValue('#FFFFFF')
+                            ->info('Colour transparent areas of an illustration are flattened onto, as #RRGGBB. Without it a platform composites them against a colour of its own choosing, usually black')
+                            ->validate()
+                                ->ifTrue(static fn (mixed $colour): bool => !\is_string($colour) || 1 !== preg_match('/^#[0-9A-Fa-f]{6}$/', $colour))
+                                ->thenInvalid('mulertech_seo.social_card.background must be a colour written #RRGGBB, got %s.')
+                            ->end()
+                        ->end()
+                    ->end()
+                ->end()
                 ->arrayNode('llms')
                     ->addDefaultsIfNotSet()
                     ->children()
@@ -198,6 +218,9 @@ final class MulerTechSeoBundle extends AbstractBundle
         $builder->registerForAutoconfiguration(LlmsSectionProviderInterface::class)
             ->addTag('mulertech_seo.llms_section_provider');
 
+        $builder->registerForAutoconfiguration(SocialCardSourceProviderInterface::class)
+            ->addTag('mulertech_seo.social_card_source_provider');
+
         /** @var array<string, mixed> $schemaOrg */
         $schemaOrg = $config['schema_org'];
 
@@ -206,6 +229,9 @@ final class MulerTechSeoBundle extends AbstractBundle
 
         /** @var array<string, mixed> $llms */
         $llms = $config['llms'];
+
+        /** @var array{directory: string, background: string} $socialCard */
+        $socialCard = $config['social_card'];
 
         $container->services()
             ->set('mulertech_seo.meta_tag', MetaTagService::class)
@@ -302,6 +328,31 @@ final class MulerTechSeoBundle extends AbstractBundle
 
         $container->services()
             ->alias(LlmsController::class, 'mulertech_seo.controller.llms')
+            ->public();
+
+        $container->services()
+            ->set('mulertech_seo.social_card', SocialCardService::class)
+            ->args([
+                '$providers' => tagged_iterator('mulertech_seo.social_card_source_provider'),
+                '$urlGenerator' => new Reference('router'),
+                '$logger' => new Reference('logger'),
+                '$directory' => $socialCard['directory'],
+                '$background' => (int) hexdec(substr($socialCard['background'], 1)),
+            ]);
+
+        $container->services()
+            ->alias(SocialCardService::class, 'mulertech_seo.social_card');
+
+        $container->services()
+            ->set('mulertech_seo.controller.social_card', SocialCardController::class)
+            ->args([
+                '$socialCardService' => new Reference('mulertech_seo.social_card'),
+                '$defaultImage' => $config['default_image'],
+            ])
+            ->tag('controller.service_arguments');
+
+        $container->services()
+            ->alias(SocialCardController::class, 'mulertech_seo.controller.social_card')
             ->public();
 
         if (class_exists(AbstractExtension::class)) {

@@ -12,3 +12,12 @@ mulertech_seo_llms:
     path: /llms.txt
     controller: MulerTech\SeoBundle\Controller\LlmsController
     methods: [GET]
+
+mulertech_seo_social_card:
+    path: /social-card/{type}/image-{id}-{fingerprint}.jpg
+    controller: MulerTech\SeoBundle\Controller\SocialCardController
+    methods: [GET]
+    requirements:
+        type: '[a-z0-9-]+'
+        id: '[A-Za-z0-9_-]+'
+        fingerprint: '[0-9a-f]{8}'

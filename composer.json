@@ -1,9 +1,9 @@
 {
     "name": "mulertech/seo-bundle",
-    "description": "Symfony bundle for SEO management: meta tags (OpenGraph, Twitter Cards), Schema.org JSON-LD structured data, sitemap XML generation, and robots.txt",
+    "description": "Symfony bundle for SEO management: meta tags (OpenGraph, Twitter Cards), social sharing images, Schema.org JSON-LD structured data, sitemap XML generation, robots.txt and llms.txt",
     "type": "symfony-bundle",
     "license": "MIT",
-    "keywords": ["php", "symfony", "seo", "meta-tags", "opengraph", "schema-org", "json-ld", "sitemap", "robots"],
+    "keywords": ["php", "symfony", "seo", "meta-tags", "opengraph", "social-card", "schema-org", "json-ld", "sitemap", "robots"],
     "authors": [
         {
             "name": "S\u00e9bastien Muler",
@@ -12,6 +12,8 @@
     ],
     "require": {
         "php": "^8.4",
+        "ext-gd": "*",
+        "psr/log": "^2.0 || ^3.0",
         "symfony/config": "^6.4 || ^7.0 || ^8.0",
         "symfony/dependency-injection": "^6.4 || ^7.0 || ^8.0",
         "symfony/http-foundation": "^6.4 || ^7.0 || ^8.0",
@@ -30,7 +32,7 @@
     },
     "suggest": {
         "twig/twig": "Required to use the schema_org_json_ld() Twig function and seo_meta.html.twig template",
-        "symfony/framework-bundle": "Required to use the built-in SitemapController and RobotsController"
+        "symfony/framework-bundle": "Required to use the built-in SitemapController, RobotsController, LlmsController and SocialCardController"
     },
     "autoload": {
         "psr-4": {

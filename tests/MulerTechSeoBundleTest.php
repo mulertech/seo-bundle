@@ -6,13 +6,16 @@ namespace MulerTech\SeoBundle\Tests;
 
 use MulerTech\SeoBundle\Controller\RobotsController;
 use MulerTech\SeoBundle\Controller\SitemapController;
+use MulerTech\SeoBundle\Controller\SocialCardController;
 use MulerTech\SeoBundle\Model\LlmsSectionProviderInterface;
 use MulerTech\SeoBundle\Model\SitemapUrlProviderInterface;
+use MulerTech\SeoBundle\Model\SocialCardSourceProviderInterface;
 use MulerTech\SeoBundle\MulerTechSeoBundle;
 use MulerTech\SeoBundle\Service\LlmsService;
 use MulerTech\SeoBundle\Service\MetaTagService;
 use MulerTech\SeoBundle\Service\SchemaOrgService;
 use MulerTech\SeoBundle\Service\SitemapService;
+use MulerTech\SeoBundle\Service\SocialCardService;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\FileLocator;
@@ -359,6 +362,52 @@ final class MulerTechSeoBundleTest extends TestCase
         self::assertSame('/sitemap.xml', $routeCollection->get('mulertech_seo_sitemap')->getPath());
         self::assertSame('/robots.txt', $routeCollection->get('mulertech_seo_robots')->getPath());
         self::assertSame('/llms.txt', $routeCollection->get('mulertech_seo_llms')->getPath());
+        self::assertSame('/social-card/{type}/image-{id}-{fingerprint}.jpg', $routeCollection->get(SocialCardService::ROUTE)?->getPath());
+    }
+
+    public function testLoadExtensionRegistersSocialCardServicesWithDefaults(): void
+    {
+        $containerBuilder = $this->loadBundleConfig([]);
+
+        $args = $containerBuilder->getDefinition('mulertech_seo.social_card')->getArguments();
+        self::assertSame('%kernel.project_dir%/var/social-cards', $args['$directory']);
+        self::assertSame(0xFFFFFF, $args['$background']);
+        self::assertTrue($containerBuilder->hasAlias(SocialCardService::class));
+
+        $controller = $containerBuilder->getDefinition('mulertech_seo.controller.social_card');
+        self::assertSame(SocialCardController::class, $controller->getClass());
+        self::assertTrue($controller->hasTag('controller.service_arguments'));
+        self::assertNull($controller->getArguments()['$defaultImage']);
+        self::assertTrue($containerBuilder->getAlias(SocialCardController::class)->isPublic());
+    }
+
+    public function testLoadExtensionRegistersSocialCardServicesWithCustomConfig(): void
+    {
+        $containerBuilder = $this->loadBundleConfig([
+            'default_image' => '/images/og.jpg',
+            'social_card' => ['directory' => '/srv/cards', 'background' => '#002c54'],
+        ]);
+
+        $args = $containerBuilder->getDefinition('mulertech_seo.social_card')->getArguments();
+        self::assertSame('/srv/cards', $args['$directory']);
+        self::assertSame(0x002C54, $args['$background']);
+        self::assertSame('/images/og.jpg', $containerBuilder->getDefinition('mulertech_seo.controller.social_card')->getArguments()['$defaultImage']);
+    }
+
+    public function testLoadExtensionRejectsABackgroundThatIsNotAHexColour(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+        $this->expectExceptionMessage('must be a colour written #RRGGBB');
+
+        $this->loadBundleConfig(['social_card' => ['background' => 'navy']]);
+    }
+
+    public function testLoadExtensionRegistersSocialCardSourceProviderAutoconfiguration(): void
+    {
+        $autoconfigured = $this->loadBundleConfig([])->getAutoconfiguredInstanceof();
+
+        self::assertArrayHasKey(SocialCardSourceProviderInterface::class, $autoconfigured);
+        self::assertTrue($autoconfigured[SocialCardSourceProviderInterface::class]->hasTag('mulertech_seo.social_card_source_provider'));
     }
 
     /**

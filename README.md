@@ -8,11 +8,11 @@ ___
 [![Test Coverage](https://raw.githubusercontent.com/mulertech/seo-bundle/badge/badge-coverage.svg)](https://packagist.org/packages/mulertech/seo-bundle)
 ___
 
-Symfony bundle for SEO management: meta tags (OpenGraph, Twitter Cards), Schema.org JSON-LD structured data, sitemap XML generation, robots.txt, and llms.txt.
+Symfony bundle for SEO management: meta tags (OpenGraph, Twitter Cards), social sharing images, Schema.org JSON-LD structured data, sitemap XML generation, robots.txt, and llms.txt.
 
 ## Requirements
 
-- PHP 8.4+
+- PHP 8.4+ with the GD extension (WebP and JPEG support)
 - Symfony 6.4+, 7.0+ or 8.0+
 
 ## Installation
@@ -29,7 +29,7 @@ mulertech_seo:
     # Fallback for og:image / twitter:image. A path is resolved against the host of the
     # current request, so one value serves every environment. Use JPEG or PNG at
     # 1200x630: LinkedIn refuses WebP outright, and Facebook downgrades to a square
-    # thumbnail below 600x315.
+    # thumbnail below 600x315. Also served when a social card cannot be derived.
     default_image: '/images/og-default.jpg'
     default_image_width: 1200
     default_image_height: 630
@@ -80,6 +80,13 @@ mulertech_seo:
         groups:
             - user_agents: ['HTTrack', 'WebCopier', 'WebZIP']
               disallow: ['/']
+    social_card:
+        # Where derived cards are written. They are disposable: anything deleted there is
+        # rebuilt on the next request.
+        directory: '%kernel.project_dir%/var/social-cards'
+        # Transparent areas of an illustration are flattened onto this colour. Without it a
+        # platform composites them against a colour of its own choosing, usually black.
+        background: '#FFFFFF'
     llms:
         enabled: true                             # Serve the /llms.txt route
         title: 'My Company'                       # H1 (defaults to company name)
@@ -297,9 +304,65 @@ class BlogLlmsProvider implements LlmsSectionProviderInterface
 
 Providers implementing `LlmsSectionProviderInterface` are auto-tagged; their sections are appended after the static config sections. Set `llms.enabled: false` to return a 404 for the route.
 
+### 6. Social cards (provider pattern)
+
+A page shared on LinkedIn, Facebook or X is shown with the image its `og:image` names. The platforms want a 1200x630 JPEG: LinkedIn refuses WebP, and Facebook downgrades anything under 600x315 to a square thumbnail. The bundle derives that card from whatever illustration a page already carries, cropped from its centre, so nothing has to be authored twice.
+
+Implement `SocialCardSourceProviderInterface` for each kind of page:
+
+```php
+use MulerTech\SeoBundle\Model\SocialCardSource;
+use MulerTech\SeoBundle\Model\SocialCardSourceProviderInterface;
+
+class BlogSocialCardProvider implements SocialCardSourceProviderInterface
+{
+    public function __construct(private readonly BlogPostRepository $repository) {}
+
+    public function getSocialCardType(): string
+    {
+        return 'blog';
+    }
+
+    public function findSocialCardSource(string $id): ?SocialCardSource
+    {
+        $post = $this->repository->find($id);
+
+        if (null === $post || !$post->isPublished() || null === $post->getFeaturedImage()) {
+            return null;
+        }
+
+        return self::source($post->getFeaturedImage());
+    }
+
+    public static function source(File $image): SocialCardSource
+    {
+        return new SocialCardSource(
+            path: $image->getAbsolutePath(),
+            version: $image->getStoredFilename().'|'.$image->getSize(),
+        );
+    }
+}
+```
+
+Then declare the card in the page's meta tags:
+
+```php
+$seo = $metaTagService->generateMetaTags([
+    'title' => $post->getTitle(),
+    'imageAlt' => $post->getTitle(),
+    ...$socialCardService->metaTagOptions('blog', $post->getId(), BlogSocialCardProvider::source($image)),
+]);
+```
+
+- `version` must change exactly when the image changes. It travels in the card's address, `/social-card/blog/image-42-3fa9c1e2.jpg`, because platforms cache a preview against its address, LinkedIn effectively forever: a stable address would keep showing the old picture. Read it from what the page already holds, so rendering the page touches no disk
+- The card is derived on the first request for it, which only crawlers make, then served with a one-year immutable cache. An outdated address redirects permanently to the current one
+- Each page keeps a single card: deriving a new one deletes the previous
+- A card that cannot be derived is logged as an error and redirects, uncached, to `default_image`. Without `default_image` the request fails
+- `metaTagOptions()` throws when no provider declares the type, listing the declared ones
+
 ### Routes
 
-The bundle provides routes for `/sitemap.xml`, `/robots.txt`, and `/llms.txt`. Import them in your application:
+The bundle provides routes for `/sitemap.xml`, `/robots.txt`, `/llms.txt` and `/social-card/{type}/image-{id}-{fingerprint}.jpg`. Import them in your application:
 
 ```yaml
 # config/routes/mulertech_seo.yaml
@@ -307,7 +370,7 @@ mulertech_seo:
     resource: "@MulerTechSeoBundle/config/routes.yaml"
 ```
 
-### 6. SEO fields trait (optional)
+### 7. SEO fields trait (optional)
 
 Add `metaDescription` and `metaKeywords` fields to any entity:
 
