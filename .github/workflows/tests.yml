@@ -56,7 +56,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: fileinfo
+          extensions: fileinfo, gd
           coverage: none
 
       - name: Install dependencies
