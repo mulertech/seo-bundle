@@ -132,9 +132,42 @@ final class SeoExtensionTest extends TestCase
     public function testUnknownTypeThrowsListingTheValidTypes(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Unknown schema.org type "faq" passed to schema_org_json_ld(); valid types: "organization", "webSite", "blogPosting", "service", "breadcrumbList", "faqPage".');
+        $this->expectExceptionMessage('Unknown schema.org type "faq" passed to schema_org_json_ld(); valid types: "organization", "webSite", "person", "blogPosting", "service", "breadcrumbList", "faqPage".');
 
         $this->extension->schemaOrgJsonLd('faq');
+    }
+
+    public function testPersonReturnsJsonLdScript(): void
+    {
+        $result = $this->extensionWithFounder()->schemaOrgJsonLd('person', ['jobTitle' => 'Community manager', 'sameAs' => ['https://www.linkedin.com/in/jane']]);
+
+        self::assertStringContainsString('"@type": "Person"', $result);
+        self::assertStringContainsString('"@id": "https://example.com/about#person"', $result);
+        self::assertStringContainsString('"@id": "https://example.com/#organization"', $result);
+    }
+
+    public function testPersonRejectsAMissingJobTitle(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('a string "jobTitle"');
+
+        $this->extensionWithFounder()->schemaOrgJsonLd('person', ['description' => 'Jane']);
+    }
+
+    public function testPersonRejectsASameAsThatIsNotAListOfStrings(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('a list of strings "sameAs"');
+
+        $this->extensionWithFounder()->schemaOrgJsonLd('person', ['jobTitle' => 'Community manager', 'sameAs' => ['https://example.com', 42]]);
+    }
+
+    public function testPersonRejectsDataThatIsNotAnArray(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('schema_org_json_ld("person") expects {jobTitle: string');
+
+        $this->extensionWithFounder()->schemaOrgJsonLd('person', 'Jane');
     }
 
     public function testFaqPageReturnsJsonLdScript(): void
@@ -335,5 +368,20 @@ final class SeoExtensionTest extends TestCase
         $service = $extension->schemaOrgJsonLd('service', ['title' => 'Audit']);
 
         self::assertStringContainsString('"url": "https://example.com/page?fbclid=IwAR123"', $service);
+    }
+
+    private function extensionWithFounder(): SeoExtension
+    {
+        $companyInfo = $this->createStub(SeoCompanyInfoProviderInterface::class);
+        $companyInfo->method('getName')->willReturn('TestCompany');
+        $companyInfo->method('getWebsite')->willReturn('https://example.com');
+
+        $requestStack = new RequestStack();
+        $requestStack->push(Request::create('https://example.com/about'));
+
+        return new SeoExtension(
+            new SchemaOrgService($companyInfo, $requestStack, founderName: 'Jane Doe', founderUrl: '/about'),
+            $requestStack,
+        );
     }
 }

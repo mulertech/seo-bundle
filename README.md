@@ -56,6 +56,10 @@ mulertech_seo:
         # absolute one.
         logo: '/images/logo.png'
         founder_name: 'Jane Doe'
+        # Page presenting the founder. It gives them an @id that the organization (founder),
+        # the person block (person) and the articles they author (blogPosting) all share, so
+        # search engines and language models read one person rather than several homonyms.
+        founder_url: '/about'
         search_action_path_template: '/blog?q={search_term_string}'
         areas_served:
             - { type: 'City', name: 'Caen' }
@@ -180,6 +184,15 @@ Include the meta tags template in your `<head>`:
 {{ schema_org_json_ld('organization') }}
 {{ schema_org_json_ld('webSite') }}
 
+{# The founder, on the page founder_url points to. Requires founder_name and founder_url. #}
+{{ schema_org_json_ld('person', {
+    jobTitle: 'Web developer',
+    description: 'Jane builds web applications for small businesses.',
+    image: '/images/jane.webp',
+    knowsAbout: ['Symfony', 'Accessibility'],
+    sameAs: ['https://www.linkedin.com/in/jane']
+}) }}
+
 {# Blog posting (in blog/show.html.twig) #}
 {{ schema_org_json_ld('blogPosting', post) }}
 
@@ -203,10 +216,18 @@ Include the meta tags template in your `<head>`:
 
 An unknown type, or data that does not match its type, throws an `InvalidArgumentException` naming
 what was expected: a structured data block that silently disappears is only noticed at the next SEO
-audit. `service` takes `{title: string, description?: string}`, `breadcrumbList` a list of
+audit. `person` takes `{jobTitle: string, description?: string, image?: string, knowsAbout?: list<string>, sameAs?: list<string>}`,
+`service` takes `{title: string, description?: string}`, `breadcrumbList` a list of
 `{label: string, url: ?string}`, `faqPage` a list of `{question: string, answer: string}`. An empty
 `breadcrumbList` or `faqPage` list renders nothing, so a page with no entries yet needs no condition
 around the call.
+
+Every block naming the organization carries the same `@id`, `<website>/#organization`, and the
+founder carries `<founder_url>#person` wherever they appear: in the organization, in the `person`
+block, and as the author of a `blogPosting` whose author name equals `founder_name`. `person` links
+back to the organization through `worksFor`. Keep the profiles that belong to the company (its
+Google Business Profile, its pages) in `getSocialUrls()`, and those of the person in `sameAs` of
+`person`: a reader takes each list as identifying the entity it sits in.
 
 For `faqPage`, `answer` passes through as is and may hold the restricted HTML Google reads in `Answer.text`
 (`p`, `br`, `ul`, `ol`, `li`, `a`, `strong`, `em`, headings). The bundle does not convert markdown:

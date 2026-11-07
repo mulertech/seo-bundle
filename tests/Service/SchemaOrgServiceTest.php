@@ -310,12 +310,128 @@ final class SchemaOrgServiceTest extends TestCase
         self::assertSame(['@type' => 'Person', 'name' => 'Jane Doe'], $service->organization()['founder']);
     }
 
+    public function testOrganizationCarriesAnIdentifierBuiltFromTheWebsite(): void
+    {
+        self::assertSame('https://example.com/#organization', $this->service->organization()['@id']);
+    }
+
+    public function testOrganizationGivesTheFounderTheIdentifierOfTheirPage(): void
+    {
+        $founder = $this->serviceWithFounder('/about')->organization()['founder'];
+
+        self::assertSame([
+            '@type' => 'Person',
+            '@id' => 'https://example.com/about#person',
+            'url' => 'https://example.com/about',
+            'name' => 'Jane Doe',
+        ], $founder);
+    }
+
+    public function testPersonIsLinkedToTheOrganization(): void
+    {
+        $person = $this->serviceWithFounder('https://example.com/about')->person([
+            'jobTitle' => 'Community manager',
+            'description' => 'Jane helps hotels.',
+            'image' => '/images/jane.webp',
+            'knowsAbout' => ['Social media'],
+            'sameAs' => ['https://www.linkedin.com/in/jane'],
+        ]);
+
+        self::assertSame([
+            '@context' => 'https://schema.org',
+            '@type' => 'Person',
+            '@id' => 'https://example.com/about#person',
+            'url' => 'https://example.com/about',
+            'name' => 'Jane Doe',
+            'jobTitle' => 'Community manager',
+            'description' => 'Jane helps hotels.',
+            'image' => 'https://example.com/images/jane.webp',
+            'knowsAbout' => ['Social media'],
+            'sameAs' => ['https://www.linkedin.com/in/jane'],
+            'worksFor' => [
+                '@type' => 'LocalBusiness',
+                '@id' => 'https://example.com/#organization',
+                'name' => 'TestCompany',
+                'url' => 'https://example.com',
+            ],
+        ], $person);
+    }
+
+    public function testPersonOmitsTheOptionalFieldsLeftOut(): void
+    {
+        $person = $this->serviceWithFounder('/about')->person(['jobTitle' => 'Community manager']);
+
+        self::assertArrayNotHasKey('description', $person);
+        self::assertArrayNotHasKey('image', $person);
+        self::assertArrayNotHasKey('knowsAbout', $person);
+        self::assertArrayNotHasKey('sameAs', $person);
+    }
+
+    public function testPersonNamesTheMissingConfiguration(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('mulertech_seo.schema_org.founder_url');
+
+        $this->service->person(['jobTitle' => 'Community manager']);
+    }
+
+    public function testArticleByTheFounderPointsToTheirPage(): void
+    {
+        $result = $this->serviceWithFounder('/about')->blogPosting($this->postBy('Jane Doe'), 'https://example.com/blog/a');
+
+        self::assertSame('https://example.com/about#person', $result['author']['@id']);
+        self::assertSame('https://example.com/#organization', $result['publisher']['@id']);
+    }
+
+    public function testArticleBySomeoneElseNamesThemOnly(): void
+    {
+        $result = $this->serviceWithFounder('/about')->blogPosting($this->postBy('John Roe'), 'https://example.com/blog/a');
+
+        self::assertSame(['@type' => 'Person', 'name' => 'John Roe'], $result['author']);
+    }
+
+    public function testServiceProviderCarriesTheOrganizationIdentifier(): void
+    {
+        $result = $this->service->service(['title' => 'Web Development'], 'https://example.com/services/dev');
+
+        self::assertSame('https://example.com/#organization', $result['provider']['@id']);
+    }
+
     public function testToJsonLdNeutralisesAClosingScriptTag(): void
     {
         $json = $this->service->toJsonLd(['name' => 'Break</script><script>alert(1)</script>']);
 
         self::assertStringNotContainsString('</script>', $json);
         self::assertStringContainsString('\u003C/script\u003E', $json);
+    }
+
+    private function serviceWithFounder(string $founderUrl): SchemaOrgService
+    {
+        $companyInfo = $this->createStub(SeoCompanyInfoProviderInterface::class);
+        $companyInfo->method('getName')->willReturn('TestCompany');
+        $companyInfo->method('getWebsite')->willReturn('https://example.com');
+
+        $requestStack = new RequestStack();
+        $requestStack->push(Request::create('https://example.com/current-page'));
+
+        return new SchemaOrgService(
+            $companyInfo,
+            $requestStack,
+            founderName: 'Jane Doe',
+            founderUrl: $founderUrl,
+        );
+    }
+
+    private function postBy(string $author): BlogPostingSeoInterface
+    {
+        $post = $this->createStub(BlogPostingSeoInterface::class);
+        $post->method('getSeoTitle')->willReturn('Article');
+        $post->method('getSeoExcerpt')->willReturn(null);
+        $post->method('getSeoAuthorName')->willReturn($author);
+        $post->method('getSeoPublishedAt')->willReturn(null);
+        $post->method('getSeoUpdatedAt')->willReturn(null);
+
+        return $post;
     }
 
     private function serviceWithLogo(string $logo): SchemaOrgService

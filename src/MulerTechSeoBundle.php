@@ -83,6 +83,10 @@ final class MulerTechSeoBundle extends AbstractBundle
                             ->defaultValue('')
                             ->info('Name of the person who founded the organization, declared as schema.org founder')
                         ->end()
+                        ->scalarNode('founder_url')
+                            ->defaultValue('')
+                            ->info('Page presenting the founder (e.g. /about). It gives the founder an @id shared by the organization, the person block and the articles they author. A path is resolved against the host of the current request.')
+                        ->end()
                         ->scalarNode('search_action_path_template')
                             ->defaultValue('')
                             ->info('Path appended to site URL for SearchAction (e.g. /blog?q={search_term_string})')
@@ -260,6 +264,7 @@ final class MulerTechSeoBundle extends AbstractBundle
                 '$addressRegion' => $schemaOrg['address_region'],
                 '$logo' => $schemaOrg['logo'],
                 '$founderName' => $schemaOrg['founder_name'],
+                '$founderUrl' => $schemaOrg['founder_url'],
                 '$areasServed' => $schemaOrg['areas_served'],
                 '$offerNames' => $schemaOrg['offer_names'],
                 '$searchActionPathTemplate' => $schemaOrg['search_action_path_template'],

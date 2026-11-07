@@ -30,6 +30,7 @@ final readonly class SchemaOrgService
         private string $addressRegion = '',
         private string $logo = '',
         private string $founderName = '',
+        private string $founderUrl = '',
         private array $areasServed = [],
         private array $offerNames = [],
         private string $searchActionPathTemplate = '',
@@ -45,6 +46,7 @@ final readonly class SchemaOrgService
         $schema = [
             '@context' => 'https://schema.org',
             '@type' => $this->organizationType,
+            ...$this->organizationId(),
             'name' => $this->companyInfoProvider->getName(),
             'url' => $this->companyInfoProvider->getWebsite(),
             'email' => $this->companyInfoProvider->getEmail(),
@@ -66,6 +68,7 @@ final readonly class SchemaOrgService
         if ('' !== $this->founderName) {
             $schema['founder'] = [
                 '@type' => 'Person',
+                ...$this->founderReference(),
                 'name' => $this->founderName,
             ];
         }
@@ -191,10 +194,12 @@ final readonly class SchemaOrgService
             'url' => $url,
             'author' => [
                 '@type' => 'Person',
+                ...($post->getSeoAuthorName() === $this->founderName ? $this->founderReference() : []),
                 'name' => $post->getSeoAuthorName(),
             ],
             'publisher' => [
                 '@type' => 'Organization',
+                ...$this->organizationId(),
                 'name' => $this->companyInfoProvider->getName(),
                 'url' => $this->companyInfoProvider->getWebsite(),
             ],
@@ -227,6 +232,7 @@ final readonly class SchemaOrgService
             'url' => $url,
             'provider' => [
                 '@type' => 'Organization',
+                ...$this->organizationId(),
                 'name' => $this->companyInfoProvider->getName(),
                 'url' => $this->companyInfoProvider->getWebsite(),
             ],
@@ -245,6 +251,81 @@ final readonly class SchemaOrgService
         }
 
         return $schema;
+    }
+
+    /**
+     * The founder described on their own page, linked to the organization both ways: the
+     * organization names them as `founder`, they name it as `worksFor`, and both carry the
+     * same `@id`. Search engines and language models then read one person and one company
+     * rather than two homonyms to reconcile.
+     *
+     * @param array{jobTitle: string, description?: string, image?: string, knowsAbout?: list<string>, sameAs?: list<string>} $personData
+     *
+     * @return array<string, mixed>
+     */
+    public function person(array $personData): array
+    {
+        if ('' === $this->founderName || '' === $this->founderUrl) {
+            throw new \LogicException('schema_org_json_ld("person") describes the founder: configure both mulertech_seo.schema_org.founder_name and mulertech_seo.schema_org.founder_url (the page that presents them, e.g. /about).');
+        }
+
+        $schema = [
+            '@context' => 'https://schema.org',
+            '@type' => 'Person',
+            ...$this->founderReference(),
+            'name' => $this->founderName,
+            'jobTitle' => $personData['jobTitle'],
+        ];
+
+        if (isset($personData['description']) && '' !== $personData['description']) {
+            $schema['description'] = $personData['description'];
+        }
+        if (isset($personData['image']) && '' !== $personData['image']) {
+            $schema['image'] = $this->absolutizeUrl($personData['image'], $this->requestStack, 'schema_org_json_ld("person") image');
+        }
+        if (isset($personData['knowsAbout']) && [] !== $personData['knowsAbout']) {
+            $schema['knowsAbout'] = $personData['knowsAbout'];
+        }
+        if (isset($personData['sameAs']) && [] !== $personData['sameAs']) {
+            $schema['sameAs'] = $personData['sameAs'];
+        }
+
+        $schema['worksFor'] = [
+            '@type' => $this->organizationType,
+            ...$this->organizationId(),
+            'name' => $this->companyInfoProvider->getName(),
+            'url' => $this->companyInfoProvider->getWebsite(),
+        ];
+
+        return $schema;
+    }
+
+    /**
+     * Every block naming the organization carries the same identifier, which is what lets
+     * a reader merge them into one entity. Without a website there is nothing stable to
+     * build it from, and no identifier is better than a relative one.
+     *
+     * @return array{'@id'?: string}
+     */
+    private function organizationId(): array
+    {
+        $website = $this->companyInfoProvider->getWebsite();
+
+        return '' === $website ? [] : ['@id' => rtrim($website, '/').'/#organization'];
+    }
+
+    /**
+     * @return array{'@id'?: string, url?: string}
+     */
+    private function founderReference(): array
+    {
+        if ('' === $this->founderUrl) {
+            return [];
+        }
+
+        $url = $this->absolutizeUrl($this->founderUrl, $this->requestStack, 'mulertech_seo.schema_org.founder_url');
+
+        return ['@id' => $url.'#person', 'url' => $url];
     }
 
     private function currentUrl(): string

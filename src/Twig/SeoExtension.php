@@ -17,7 +17,7 @@ final class SeoExtension extends AbstractExtension
 {
     use CurrentUrlTrait;
 
-    private const array TYPES = ['organization', 'webSite', 'blogPosting', 'service', 'breadcrumbList', 'faqPage'];
+    private const array TYPES = ['organization', 'webSite', 'person', 'blogPosting', 'service', 'breadcrumbList', 'faqPage'];
 
     /**
      * @param list<string> $ignoredParameters query parameters stripped from the addresses
@@ -53,6 +53,7 @@ final class SeoExtension extends AbstractExtension
         $schema = match ($type) {
             'organization' => $this->schemaOrgService->organization(),
             'webSite' => $this->schemaOrgService->webSite($this->getSiteUrl()),
+            'person' => $this->resolvePerson($data),
             'blogPosting' => $this->resolveBlogPosting($data),
             'service' => $this->resolveService($data),
             'breadcrumbList' => $this->resolveBreadcrumbList($data),
@@ -99,6 +100,44 @@ final class SeoExtension extends AbstractExtension
         }
 
         return $this->schemaOrgService->service($serviceData, $this->getCurrentUrl());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function resolvePerson(mixed $data): array
+    {
+        $shape = '{jobTitle: string, description?: string, image?: string, knowsAbout?: list<string>, sameAs?: list<string>}';
+        if (!\is_array($data)) {
+            throw new \InvalidArgumentException(\sprintf('schema_org_json_ld("person") expects %s, got %s.', $shape, get_debug_type($data)));
+        }
+
+        $personData = ['jobTitle' => $this->requiredString('person', $data, 'jobTitle')];
+        foreach (['description', 'image'] as $key) {
+            $value = $this->optionalString('person', $data, $key);
+            if (null !== $value) {
+                $personData[$key] = $value;
+            }
+        }
+        foreach (['knowsAbout', 'sameAs'] as $key) {
+            $value = $data[$key] ?? null;
+            if (null === $value) {
+                continue;
+            }
+            if (!\is_array($value) || !array_is_list($value)) {
+                throw new \InvalidArgumentException(\sprintf('schema_org_json_ld("person") expects a list of strings "%s", got %s.', $key, get_debug_type($value)));
+            }
+            $strings = [];
+            foreach ($value as $entry) {
+                if (!\is_string($entry)) {
+                    throw new \InvalidArgumentException(\sprintf('schema_org_json_ld("person") expects a list of strings "%s", got an entry of type %s.', $key, get_debug_type($entry)));
+                }
+                $strings[] = $entry;
+            }
+            $personData[$key] = $strings;
+        }
+
+        return $this->schemaOrgService->person($personData);
     }
 
     /**
