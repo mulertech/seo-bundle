@@ -1,5 +1,16 @@
 # Release notes for seo-bundle
 
+## v1.8.0 - 2026-11-07
+
+The founder described as a person of their own, linked to the organization both ways. Search engines and language models then read one company and one person, rather than several homonyms to reconcile across the blocks of a site.
+
+- The organization carries an `@id`, `<website>/#organization`, repeated wherever it is named: the `provider` of a `Service`, the `publisher` of a `BlogPosting`, and the `worksFor` of the person
+- `schema_org.founder_url`: the page presenting the founder. A path is resolved against the host of the current request. Once set, the `founder` of the organization carries the `@id` `<founder_url>#person` and the page as its `url`
+- `schema_org_json_ld('person', {jobTitle, description?, image?, knowsAbout?, sameAs?})` renders the founder's `Person` block, with the same `@id` and `worksFor` pointing at the organization. It throws when `founder_name` or `founder_url` is missing, naming both settings. Malformed data throws an `InvalidArgumentException` naming the expected shape, like the other types
+- An article whose author name equals `founder_name` points to the founder's `@id` and page
+- Profiles belong to the entity they identify: those of the company stay in `getSocialUrls()`, those of the person go in the `sameAs` of `person`
+- No breaking change: without `founder_url`, the founder is declared by name as before. The output of every block gains an `@id` once the website is known
+
 ## v1.7.0 - 2026-11-07
 
 Social cards: the 1200x630 JPEG image platforms show when a page is shared, derived from the illustration the page already carries. LinkedIn refuses WebP and Facebook downgrades anything under 600x315 to a square thumbnail, so a site's own illustrations rarely qualify as they are.
