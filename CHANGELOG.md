@@ -1,5 +1,17 @@
 # Release notes for seo-bundle
 
+## v1.7.0 - 2026-11-07
+
+Social cards: the 1200x630 JPEG image platforms show when a page is shared, derived from the illustration the page already carries. LinkedIn refuses WebP and Facebook downgrades anything under 600x315 to a square thumbnail, so a site's own illustrations rarely qualify as they are.
+
+- `SocialCardSourceProviderInterface` hands the bundle the illustration of one kind of page, as a `SocialCardSource` holding its path and a version that changes exactly when the image does. Providers are auto-tagged
+- `SocialCardService::metaTagOptions()` returns the `image`, `imageWidth`, `imageHeight` and `imageType` options for `generateMetaTags()`, and throws when no provider declares the type, listing the declared ones
+- Route `mulertech_seo_social_card`, `/social-card/{type}/image-{id}-{fingerprint}.jpg`: the card is derived on the first request, which only crawlers make, then served with a one-year immutable cache. The fingerprint comes from the version, so a replaced illustration gets a new address, and an outdated address redirects permanently to the current one
+- One card per page: deriving a new one deletes the previous
+- A card that cannot be derived is logged as an error and redirects, uncached, to `default_image`, so the next crawl gets the real card once the cause is fixed. Without `default_image` the request fails
+- `social_card.directory` (default `%kernel.project_dir%/var/social-cards`) and `social_card.background` (default `#FFFFFF`, the colour transparency is flattened onto)
+- Requires `ext-gd`
+
 ## v1.6.0 - 2026-09-30
 
 `schema_org_json_ld('faqPage', items)` renders a schema.org `FAQPage` block from a list of `{question, answer}` items. `answer` passes through as HTML: render and sanitise markdown in the application.
